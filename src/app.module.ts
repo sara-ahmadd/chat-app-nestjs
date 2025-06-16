@@ -5,21 +5,46 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { MessageModule } from './modules/message/message.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { User } from './modules/user/user.entity';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { CacheModule } from '@nestjs/cache-manager';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'mysql',
-      host: 'localhost',
-      port: 3306,
-      username: 'root',
-      password: 'root',
-      database: 'chat-app-nestjs',
-      entities: [User],
-      synchronize: true,
+    CacheModule.register({ isGlobal: true }),
+
+    MailerModule.forRootAsync({
+      useFactory: async (configService: ConfigService) => {
+        return {
+          transport: {
+            host: configService.get('EMAIL_HOST'),
+            auth: {
+              user: configService.get('EMAIL_USERNAME'),
+              pass: configService.get('EMAIL_PASSWORD'),
+            },
+          },
+        };
+      },
+      inject: [ConfigService],
     }),
-    ConfigModule.forRoot({ isGlobal: true }),
+
+    TypeOrmModule.forRootAsync({
+      useFactory: async (configService: ConfigService) => {
+        return {
+          type: 'mysql',
+          host: configService.get('DB_HOST'),
+          port: configService.get('DB_PORT'),
+          username: configService.get('DB_USERNAME'),
+          password: configService.get('DB_PASSWORD'),
+          database: configService.get('DB_NAME'),
+          entities: [User],
+          synchronize: true,
+        };
+      },
+      inject: [ConfigService],
+    }),
+    ConfigModule.forRoot({ envFilePath: '.env', isGlobal: true }),
 
     MessageModule,
     AuthModule,

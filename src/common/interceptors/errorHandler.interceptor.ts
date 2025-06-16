@@ -18,9 +18,9 @@ export class ErrorHandler implements NestInterceptor {
     const res = ctx.getResponse();
     return next.handle().pipe(
       catchError((error) => {
-        if (error instanceof HttpException) {
-          throw new HttpException(error, error.getStatus());
-        }
+        // if (error instanceof HttpException) {
+        //   throw error;
+        // }
         const newRes = {
           status: 'Error',
           message: error.message,

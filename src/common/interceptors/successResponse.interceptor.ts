@@ -17,8 +17,7 @@ export class SuccessResponse implements NestInterceptor {
     return next.handle().pipe(
       map((res) => ({
         status: 'Success',
-        message: res.message || '',
-        data: { ...res },
+        ...res,
       })),
     );
   }

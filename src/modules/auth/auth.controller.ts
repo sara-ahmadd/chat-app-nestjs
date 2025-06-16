@@ -1,6 +1,8 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from '../user/dtos/create-user.dto';
+import { VerifyAccountDto } from '../user/dtos/verify-account.dto';
+import { GenerateOtpDto } from '../user/dtos/generate-otp.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -12,7 +14,12 @@ export class AuthController {
   }
 
   @Post('/verify_otp')
-  verifyOtp(@Body() body: CreateUserDto) {
-    return this.authService.register(body);
+  verifyOtp(@Body() body: VerifyAccountDto) {
+    return this.authService.verifyOtp(body);
+  }
+
+  @Post('/generate_otp')
+  generateOtp(@Body() body: GenerateOtpDto) {
+    return this.authService.sendOtp(body.email);
   }
 }

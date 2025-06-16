@@ -16,7 +16,6 @@ export const defaultFemaleAvatar =
 export const defaultMaleAvatar =
   'https://res.cloudinary.com/dpiuyacez/image/upload/v1748543585/Screenshot_2025-05-29_213046_kyae5x.png';
 
-@Unique(['email'])
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
@@ -28,7 +27,7 @@ export class User {
   @Column()
   userName: string;
 
-  @Column()
+  @Column({ unique: true })
   email: string;
 
   @Column()
@@ -67,6 +66,9 @@ export class User {
 
   @Column({ default: false })
   isOnline: boolean;
+
+  @Column({ default: false })
+  isActive: boolean;
 
   @Column({ type: Date, default: () => 'CURRENT_TIMESTAMP' })
   lastSeenAt: Date;

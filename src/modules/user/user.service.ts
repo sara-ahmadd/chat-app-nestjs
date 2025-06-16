@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UserRepository } from './user.repository';
@@ -20,6 +21,24 @@ export class UserService {
       return user;
     } catch (error) {
       throw new ConflictException('Email already exists');
+    }
+  }
+  async getUserByEmail(email: string) {
+    try {
+      const user = await this._UserRepository.getUserByEmail(email);
+      return user;
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+  async validateUser(id: number, isActive: boolean) {
+    try {
+      const updatedUser = await this._UserRepository.updateUser(id, {
+        isActive,
+      });
+      return updatedUser;
+    } catch (error) {
+      throw new InternalServerErrorException(error);
     }
   }
 }
