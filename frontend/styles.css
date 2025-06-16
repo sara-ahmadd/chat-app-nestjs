@@ -1,0 +1,71 @@
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: #f2f2f2;
+}
+
+.login-body,
+.chat-body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.login-container {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.login-container input,
+.login-container button {
+  display: block;
+  width: 100%;
+  margin: 10px 0;
+  padding: 10px;
+}
+
+.chat-container {
+  display: flex;
+  width: 90%;
+  height: 90vh;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 25%;
+  background: #eee;
+  padding: 15px;
+  overflow-y: auto;
+}
+
+.chat-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-box {
+  flex: 1;
+  padding: 10px;
+  overflow-y: auto;
+  border-bottom: 1px solid #ccc;
+}
+
+.input-box {
+  display: flex;
+  padding: 10px;
+}
+
+.input-box input {
+  flex: 1;
+  padding: 10px;
+}
+
+.input-box button {
+  padding: 10px;
+}
