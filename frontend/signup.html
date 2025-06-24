@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Sign Up</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 flex justify-center items-center min-h-screen">
+    <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
+      <h2 class="text-2xl font-bold mb-4 text-center">Sign Up</h2>
+      <form id="signup-form" class="space-y-4">
+        <input
+          type="text"
+          id="username"
+          placeholder="Username"
+          required
+          class="w-full px-4 py-2 border rounded"
+        />
+        <input
+          type="email"
+          id="email"
+          placeholder="Email"
+          required
+          class="w-full px-4 py-2 border rounded"
+        />
+        <input
+          type="password"
+          id="password"
+          placeholder="Password"
+          required
+          class="w-full px-4 py-2 border rounded"
+        />
+        <input
+          type="password"
+          id="confirmPassword"
+          placeholder="Confirm Password"
+          required
+          class="w-full px-4 py-2 border rounded"
+        />
+        <select id="gender" required class="w-full px-4 py-2 border rounded">
+          <option value="">Select Gender</option>
+          <option value="female">Female</option>
+          <option value="male">Male</option>
+        </select>
+        <button
+          type="submit"
+          class="bg-blue-600 text-white w-full py-2 rounded hover:bg-blue-700"
+        >
+          Register
+        </button>
+      </form>
+    </div>
+
+    <div
+      id="success-modal"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center hidden"
+    >
+      <div class="bg-white p-6 rounded shadow max-w-sm w-full">
+        <h3 class="text-lg font-semibold mb-4">OTP Sent</h3>
+        <p class="mb-4">Check your email for the OTP code.</p>
+        <button
+          onclick="redirectToOtp()"
+          class="bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          Continue
+        </button>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById('signup-form');
+      const modal = document.getElementById('success-modal');
+
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const data = {
+          userName: document.getElementById('username').value,
+          email: document.getElementById('email').value,
+          password: document.getElementById('password').value,
+          confirmPassword: document.getElementById('confirmPassword').value,
+          gender: document.getElementById('gender').value,
+        };
+
+        try {
+          const res = await fetch('http://localhost:8000/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          });
+
+          if (!res.ok) {
+            throw new Error('Registration failed');
+          }
+          modal.classList.remove('hidden');
+        } catch (err) {
+          alert('Error: ' + err.message);
+        }
+      });
+
+      function redirectToOtp() {
+        window.location.href = 'otp.html';
+      }
+    </script>
+  </body>
+</html>

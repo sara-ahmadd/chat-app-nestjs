@@ -2,30 +2,266 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <title>Socket Chat</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Chat | ChatApp</title>
-    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   </head>
-  <body class="chat-body">
-    <div class="chat-container">
-      <div class="sidebar">
-        <h3>Online Users</h3>
-        <ul id="userList"></ul>
+  <body class="bg-gray-100 h-screen overflow-hidden">
+    <div class="h-full flex">
+      <!-- Sidebar: Users -->
+      <div
+        class="w-1/3 bg-white p-4 overflow-y-auto border-r flex flex-col justify-start items-start gap-4 p-3"
+      >
+        <div class="mb-4 w-full">
+          <form id="search-form" class="flex gap-2">
+            <input
+              type="email"
+              id="search-email"
+              placeholder="Search user by email"
+              class="flex-1 px-3 py-2 border rounded"
+              required
+            />
+            <button
+              type="submit"
+              class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+            >
+              Search
+            </button>
+          </form>
+        </div>
+        <h2 class="text-xl font-bold mb-4">Users</h2>
+        <ul id="user-list" class="space-y-2 w-full"></ul>
       </div>
-      <div class="chat-section">
-        <div id="chatBox" class="chat-box"></div>
-        <div class="input-box">
+
+      <!-- Chat area -->
+      <div class="w-2/3 flex flex-col p-4">
+        <!-- Current user info -->
+        <div
+          id="current-user"
+          class="bg-white p-4 rounded flex items-center gap-4 mb-4 border"
+        >
+          <img
+            id="avatar"
+            src=""
+            alt="avatar"
+            class="w-12 h-12 rounded-full hidden"
+          />
+          <div class="flex flex-col">
+            <span id="username" class="font-semibold text-lg">Loading...</span>
+            <span id="email" class="text-gray-600 text-sm">---</span>
+            <span
+              id="status"
+              class="text-sm text-green-600 flex items-center gap-1"
+            ></span>
+          </div>
+        </div>
+
+        <div id="chat-header" class="text-xl font-semibold mb-4">
+          Select a user to chat
+        </div>
+
+        <div
+          id="chat-box"
+          class="flex-1 overflow-y-auto bg-white rounded p-4 space-y-2 border"
+        ></div>
+
+        <form id="chat-form" class="mt-4 hidden flex gap-2">
           <input
             type="text"
-            id="messageInput"
-            placeholder="Type a message..."
+            id="chat-input"
+            placeholder="Type your message..."
+            required
+            class="flex-1 px-4 py-2 border rounded"
           />
-          <button id="sendBtn">Send</button>
-        </div>
+          <button
+            type="submit"
+            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Send
+          </button>
+        </form>
       </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="chat.js"></script>
+    <script>
+      const accessToken = localStorage.getItem('refreshToken');
+
+      if (!accessToken) {
+        window.location.href = 'login.html';
+        throw new Error('no token is found');
+      }
+
+      const socket = io('http://localhost:8000', {
+        auth: {
+          authentication: {
+            auth: `Bearer ${accessToken}`,
+          },
+        },
+      });
+      socket.on('token_error', (data) => {
+        console.log({ data });
+      });
+
+      //get current user data
+      socket.on('get_my_profile', ({ user }) => {
+        document.getElementById('username').textContent =
+          user.userName || user.email;
+        document.getElementById('email').textContent = user.email || '';
+
+        if (user.avatar) {
+          const avatar = document.getElementById('avatar');
+          avatar.src = user.avatar;
+          avatar.classList.remove('hidden');
+        }
+
+        const status = document.getElementById('status');
+        if (user.isOline || user.isOnline || user.isActiveNow) {
+          status.innerHTML =
+            '<span class="inline-block w-2 h-2 bg-green-500 rounded-full"></span> Active Now';
+        } else {
+          status.innerHTML = `<span class="text-gray-500">Last seen at ${user.lastSeenAt || 'unknown'}</span>`;
+        }
+      });
+
+      const userList = document.getElementById('user-list');
+      const chatHeader = document.getElementById('chat-header');
+      const chatBox = document.getElementById('chat-box');
+      const chatForm = document.getElementById('chat-form');
+      const chatInput = document.getElementById('chat-input');
+
+      let selectedUser = null;
+
+      function createUserListItem(user) {
+        const li = document.createElement('li');
+        li.className =
+          'cursor-pointer p-3 rounded hover:bg-gray-100 flex items-center gap-3 border border-gray-200';
+
+        const avatar = document.createElement('img');
+        avatar.src = user.avatar || 'https://via.placeholder.com/40';
+        avatar.alt = 'avatar';
+        avatar.className = 'w-10 h-10 rounded-full object-cover';
+
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'flex flex-col';
+
+        const username = document.createElement('span');
+        username.textContent = user.userName || 'Unnamed';
+        username.className = 'font-medium';
+
+        const emailSpan = document.createElement('span');
+        emailSpan.textContent = user.email || 'No email';
+        emailSpan.className = 'text-sm text-gray-600';
+
+        const status = document.createElement('div');
+        if (user.isOnline) {
+          status.innerHTML =
+            '<span class="text-green-600 text-sm flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-green-500"></span> Online</span>';
+        } else {
+          status.innerHTML = `<span class="text-sm text-gray-500">Last seen at ${user.lastSeenAt || 'unknown'}</span>`;
+        }
+
+        infoDiv.appendChild(username);
+        infoDiv.appendChild(emailSpan);
+        infoDiv.appendChild(status);
+
+        li.appendChild(avatar);
+        li.appendChild(infoDiv);
+
+        li.addEventListener('click', () => {
+          selectedUser = user;
+          chatHeader.textContent = `Chat with ${user.userName || user.email}`;
+          chatForm.classList.remove('hidden');
+          chatBox.innerHTML = '';
+          socket.emit('load_conversation', { to: user._id });
+          socket.emit('add_friend', { friendId: user._id });
+        });
+
+        return li;
+      }
+
+      socket.on('user_list', ({ users }) => {
+        userList.innerHTML = '';
+        users.forEach((user) => {
+          const li = createUserListItem(user);
+          userList.appendChild(li);
+        });
+      });
+
+      const searchForm = document.getElementById('search-form');
+      const searchInput = document.getElementById('search-email');
+
+      searchForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = searchInput.value.trim();
+        if (!email) return;
+
+        try {
+          const res = await fetch(
+            `http://localhost:8000/user/find_user?email=${email}`,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            },
+          );
+
+          const data = await res.json();
+
+          if (!res.ok || !data || !data.user._id) {
+            alert('User not found');
+            return;
+          }
+
+          const user = data.user;
+          const alreadyExists = [...userList.children].some((li) =>
+            li.textContent.includes(user.email),
+          );
+
+          if (!alreadyExists) {
+            const li = createUserListItem(user);
+            userList.prepend(li);
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Something went wrong');
+        }
+      });
+
+      socket.on('receive_message', (data) => {
+        const messageDiv = document.createElement('div');
+        messageDiv.textContent = data.message;
+
+        if (data.from === selectedUser._id) {
+          messageDiv.className = 'text-left bg-gray-100 p-2 rounded w-fit';
+        } else {
+          messageDiv.className =
+            'text-right bg-blue-100 p-2 rounded self-end w-fit ml-auto';
+        }
+
+        chatBox.appendChild(messageDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+      });
+
+      chatForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!selectedUser) return;
+
+        const message = chatInput.value;
+        socket.emit('send_message', {
+          to: selectedUser._id,
+          message,
+        });
+
+        const messageDiv = document.createElement('div');
+        messageDiv.textContent = message;
+        messageDiv.className =
+          'text-right bg-blue-100 p-2 rounded self-end w-fit ml-auto';
+        chatBox.appendChild(messageDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        chatInput.value = '';
+      });
+    </script>
   </body>
 </html>

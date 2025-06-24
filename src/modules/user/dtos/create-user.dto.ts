@@ -2,15 +2,20 @@ import {
   IsEmail,
   IsIn,
   IsNotEmpty,
+  IsOptional,
   IsPhoneNumber,
   IsString,
   ValidateIf,
 } from 'class-validator';
+import { Gender } from 'src/common/types/genderEnum';
 
 export class CreateUserDto {
   @IsString()
   @IsNotEmpty()
   userName: string;
+  @IsString()
+  @IsOptional()
+  gender: Gender.FEMALE | Gender.MALE;
 
   @IsEmail()
   @IsNotEmpty()

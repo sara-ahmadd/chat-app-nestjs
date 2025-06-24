@@ -1,10 +1,13 @@
-import { Gender } from 'src/common/types/genderEnum';
-import { Roles } from 'src/common/types/userRolesEnum';
+import { Gender } from './../../common/types/genderEnum';
+import { Roles } from './../../common/types/userRolesEnum';
+import { hashText } from './../../utils/hashing/hashText';
 import {
   BeforeInsert,
   Column,
   CreateDateColumn,
   Entity,
+  JoinTable,
+  ManyToMany,
   PrimaryGeneratedColumn,
   Unique,
   UpdateDateColumn,
@@ -60,6 +63,12 @@ export class User {
         this.gender === 'male' ? defaultMaleAvatar : defaultFemaleAvatar;
     }
   }
+  @BeforeInsert()
+  async hashPassword() {
+    if (this.password) {
+      this.password = await hashText(this.password);
+    }
+  }
 
   @Column({ default: defaultFemaleAvatar })
   avatar: string;
@@ -72,4 +81,18 @@ export class User {
 
   @Column({ type: Date, default: () => 'CURRENT_TIMESTAMP' })
   lastSeenAt: Date;
+
+  @ManyToMany(() => User, (user) => user.friends)
+  @JoinTable({
+    name: 'user_friends',
+    joinColumn: {
+      name: 'userId',
+      referencedColumnName: 'id',
+    },
+    inverseJoinColumn: {
+      name: 'friendId',
+      referencedColumnName: 'id',
+    },
+  })
+  friends: User[];
 }

@@ -9,11 +9,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { CacheModule } from '@nestjs/cache-manager';
+import { AuthGuard } from './common/guards/auth.guard';
+import { SocketModule } from './socket/socket.module';
 
 @Module({
   imports: [
-    CacheModule.register({ isGlobal: true }),
-
     MailerModule.forRootAsync({
       useFactory: async (configService: ConfigService) => {
         return {
@@ -39,14 +39,15 @@ import { CacheModule } from '@nestjs/cache-manager';
           password: configService.get('DB_PASSWORD'),
           database: configService.get('DB_NAME'),
           entities: [User],
-          synchronize: true,
+          synchronize: false,
         };
       },
       inject: [ConfigService],
     }),
-    ConfigModule.forRoot({ envFilePath: '.env', isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true }),
 
     MessageModule,
+    SocketModule,
     AuthModule,
   ],
   controllers: [AppController],
