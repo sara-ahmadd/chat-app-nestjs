@@ -8,6 +8,7 @@ import { CACHE_MANAGER, CacheModule } from '@nestjs/cache-manager';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from 'src/common/guards/auth.guard';
 import { JWTFunctions } from 'src/common/services/jwt-service.service';
+import { MailerEmailService } from 'src/common/services/mailer.service';
 
 @Module({
   imports: [
@@ -26,7 +27,8 @@ import { JWTFunctions } from 'src/common/services/jwt-service.service';
     AuthService,
     { provide: APP_GUARD, useClass: AuthGuard },
     JWTFunctions,
+    MailerEmailService,
   ],
-  exports: [JWTFunctions],
+  exports: [JWTFunctions, MailerEmailService],
 })
 export class AuthModule {}

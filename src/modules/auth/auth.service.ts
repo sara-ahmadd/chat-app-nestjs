@@ -1,31 +1,27 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
   BadRequestException,
   Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Cache } from 'cache-manager';
+import { generate } from 'otp-generator';
+import { JWTFunctions } from 'src/common/services/jwt-service.service';
+import { MailerEmailService } from 'src/common/services/mailer.service';
+import { compareHash } from 'src/utils/hashing/hashText';
+import { verifyAccount } from 'src/utils/html-templates/verifyAccount';
 import { CreateUserDto } from '../user/dtos/create-user.dto';
 import { UserService } from '../user/user.service';
-import { generate } from 'otp-generator';
-import { MailerService } from '@nestjs-modules/mailer';
-import { verifyAccount } from 'src/utils/html-templates/verifyAccount';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
-import { VerifyAccountDto } from '../user/dtos/verify-account.dto';
 import { LoginDto } from './dtos/login.dto';
-import { compareHash } from 'src/utils/hashing/hashText';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import { JWTFunctions } from 'src/common/services/jwt-service.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly _UserService: UserService,
-    private readonly Mailer_Service: MailerService,
+    private readonly MailerEmailService: MailerEmailService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
-    // private readonly JWTService: JwtService,
-    private readonly configService: ConfigService,
     private readonly _JWTFunctions: JWTFunctions,
   ) {}
   async register(body: CreateUserDto) {
@@ -44,7 +40,7 @@ export class AuthService {
     // set otp in cache manager, that expires after 5 minutes
     await this.cacheManager.set(`${email}-otp`, otp, 300000); //300000 ms
 
-    await this.sendEmail({
+    await this.MailerEmailService.sendEmail({
       email: email,
       subject: 'Verify your account',
       html: verifyAccount(otp),
@@ -60,28 +56,10 @@ export class AuthService {
       console.log({ otp, getOtp });
       throw new BadRequestException('invalid otp');
     }
-    // console.log({ otp, getOtp });
     const { user } = await this._UserService.searchForUserByEmail(email);
     await this._UserService.validateUser(user._id, true);
     await this.cacheManager.del(`${email}-otp`);
     return { message: 'Account is verified successfully' };
-  }
-
-  async sendEmail({
-    email,
-    subject,
-    html,
-  }: {
-    email: string;
-    subject: string;
-    html: string;
-  }) {
-    this.Mailer_Service.sendMail({
-      from: 'Chat App 📧',
-      to: email,
-      subject,
-      html,
-    });
   }
 
   async login(body: LoginDto) {
@@ -109,4 +87,6 @@ export class AuthService {
     });
     return { message: 'user logged in successfully', token, refreshToken };
   }
+
+  async resetPassword() {}
 }

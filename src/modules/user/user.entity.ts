@@ -73,6 +73,9 @@ export class User {
   @Column({ default: defaultFemaleAvatar })
   avatar: string;
 
+  @Column({ nullable: true })
+  avatarPublicId: string;
+
   @Column({ default: false })
   isOnline: boolean;
 
@@ -95,4 +98,7 @@ export class User {
     },
   })
   friends: User[];
+
+  @Column({ type: Date, default: () => 'CURRENT_TIMESTAMP' })
+  changeCredentials: Date;
 }

@@ -2,17 +2,33 @@ import {
   BadRequestException,
   ConflictException,
   HttpException,
+  Inject,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UserRepository } from './user.repository';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from './user.entity';
+import { UpdateUserProfileDto } from './dtos/update-user.dto';
+import { FilesService } from 'src/common/services/files.service';
+import { ConfigService } from '@nestjs/config';
+import { MailerEmailService } from 'src/common/services/mailer.service';
+import { verifyEmailUpdate } from 'src/utils/html-templates/verifyEmailUpdate';
+import { generate } from 'otp-generator';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly _UserRepository: UserRepository) {}
+  constructor(
+    private readonly _UserRepository: UserRepository,
+    private readonly filesService: FilesService,
+    private readonly _ConfigService: ConfigService,
+    private readonly MailerEmailService: MailerEmailService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   async createUser(body: CreateUserDto) {
     try {
@@ -90,9 +106,11 @@ export class UserService {
 
     return { friends: user.friends };
   }
+
   async saveUser(user: User) {
     return this._UserRepository.save(user);
   }
+
   async validateUser(userId: string, isActive: boolean) {
     try {
       const updatedUser = await this._UserRepository.updateUser(userId, {
@@ -103,4 +121,53 @@ export class UserService {
       throw new InternalServerErrorException(error);
     }
   }
+
+  async updateUserProflie(
+    file: Express.Multer.File,
+    body: UpdateUserProfileDto,
+    userId: string,
+  ) {
+    const user = await this._UserRepository.getUserBy_Id(userId, {
+      friends: true,
+    });
+
+    if (!user) {
+      throw new NotFoundException('user is not found');
+    }
+
+    let avatar = {} as { secure_url: string; public_id: string };
+    if (file) {
+      const { secure_url, public_id } = await this.filesService.uploadFile(
+        file,
+        {
+          folder: `${this._ConfigService.get('CLOUD_APP_FOLDER')}/users/${userId}`,
+        },
+      );
+      avatar = { secure_url, public_id };
+    }
+
+    user.avatar = avatar.secure_url;
+    user.avatarPublicId = avatar.public_id;
+    user.userName = body.userName;
+    user.gender = body.gender;
+    if (body.email) {
+      const otp = generate(10);
+      // set otp in cache manager, that expires after 5 minutes
+      await this.cacheManager.set(`${user.email}-otp`, otp, 300000); //300000 ms
+
+      this.MailerEmailService.sendEmail({
+        email: user.email,
+        subject: 'Verify updating your email',
+        html: verifyEmailUpdate(''),
+      });
+    }
+
+    const updatedUser = await this._UserRepository.save(user);
+    return {
+      message: `user is updated successfully ${body.email && '& OTP is sent to your email to confirm the update'}`,
+      user: updatedUser,
+    };
+  }
+
+  async confirmEmailUpdate(otp: string, email: string) {}
 }

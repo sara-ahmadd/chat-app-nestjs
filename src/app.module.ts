@@ -11,6 +11,7 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { CacheModule } from '@nestjs/cache-manager';
 import { AuthGuard } from './common/guards/auth.guard';
 import { SocketModule } from './socket/socket.module';
+import { MulterModule } from '@nestjs/platform-express';
 
 @Module({
   imports: [

@@ -85,7 +85,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // emit receive msg event
     client
-      .to(receiver.id)
+      .to(receiver?.id)
       .emit('receive_message', { message, from: client.data.user._id });
   }
 
