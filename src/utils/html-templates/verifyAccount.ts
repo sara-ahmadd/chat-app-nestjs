@@ -60,7 +60,7 @@ export function verifyAccount(otp: string) {
       <div class="otp">${otp}</div>
 
       <p style="text-align: center;">
-        This code will expire in 10 minutes.<br />
+        This code will expire in 5 minutes.<br />
         If you did not request this, please ignore this email.
       </p>
 

@@ -4,17 +4,13 @@ import { Gender } from './../../../common/types/genderEnum';
 export class UpdateUserProfileDto {
   @IsOptional()
   @IsEmail()
-  email: string;
+  email?: string;
 
   @IsOptional()
   @IsString()
-  password: String;
+  gender?: Gender.FEMALE | Gender.MALE;
 
   @IsOptional()
   @IsString()
-  gender: Gender.FEMALE | Gender.MALE;
-
-  @IsOptional()
-  @IsString()
-  userName: string;
+  userName?: string;
 }

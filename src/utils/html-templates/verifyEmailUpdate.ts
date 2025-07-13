@@ -1,4 +1,4 @@
-export const verifyEmailUpdate = (otp: string) => {
+export const verifyEmailUpdate = (otp: string, newEmail: string) => {
   return `
     <!DOCTYPE html>
 <html lang="en">
@@ -58,13 +58,13 @@ export const verifyEmailUpdate = (otp: string) => {
       <p>Hello,</p>
       <p>
         We received a request to update the email address associated with your account.
-        To verify your new email address, please enter the OTP below in the app:
+        To verify your new email address : ${newEmail}, please enter the OTP below in the app:
       </p>
 
       <div class="otp-box">${otp}</div>
 
       <p>
-        This code is valid for the next 10 minutes. If you didn’t request this change,
+        This code is valid for the next 5 minutes. If you didn’t request this change,
         please ignore this email or contact our support team immediately.
       </p>
 

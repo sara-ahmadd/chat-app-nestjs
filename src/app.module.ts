@@ -12,9 +12,14 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { AuthGuard } from './common/guards/auth.guard';
 import { SocketModule } from './socket/socket.module';
 import { MulterModule } from '@nestjs/platform-express';
+import { CloudinaryModule } from './common/providers/cloudinary.module';
+import { ConversationModule } from './modules/conversation/conversation.module';
+import { Conversation } from './modules/conversation/conversation.entity';
+import { Message } from './modules/message/message.entity';
 
 @Module({
   imports: [
+    CloudinaryModule,
     MailerModule.forRootAsync({
       useFactory: async (configService: ConfigService) => {
         return {
@@ -33,16 +38,22 @@ import { MulterModule } from '@nestjs/platform-express';
     TypeOrmModule.forRootAsync({
       useFactory: async (configService: ConfigService) => {
         return {
-          type: 'mysql',
-          host: configService.get('DB_HOST'),
-          port: configService.get('DB_PORT'),
-          username: configService.get('DB_USERNAME'),
-          password: configService.get('DB_PASSWORD'),
-          database: configService.get('DB_NAME'),
-          entities: [User],
+          type: configService.get('DB_TYPE') as
+            | 'mysql'
+            | 'postgres'
+            | 'sqlite'
+            | 'mariadb'
+            | 'mongodb',
+          host: configService.get<string>('DB_HOST'),
+          port: Number(configService.get<string>('DB_PORT')),
+          username: configService.get<string>('DB_USERNAME'),
+          password: configService.get<string>('DB_PASSWORD'),
+          database: configService.get<string>('DB_NAME'),
+          entities: [User, Conversation, Message],
           synchronize: false,
         };
       },
+
       inject: [ConfigService],
     }),
     ConfigModule.forRoot({ isGlobal: true }),
@@ -50,6 +61,7 @@ import { MulterModule } from '@nestjs/platform-express';
     MessageModule,
     SocketModule,
     AuthModule,
+    ConversationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

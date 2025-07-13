@@ -134,7 +134,7 @@ export class UserService {
     if (!user) {
       throw new NotFoundException('user is not found');
     }
-
+    console.log({ body });
     let avatar = {} as { secure_url: string; public_id: string };
     if (file) {
       const { secure_url, public_id } = await this.filesService.uploadFile(
@@ -146,10 +146,19 @@ export class UserService {
       avatar = { secure_url, public_id };
     }
 
-    user.avatar = avatar.secure_url;
+    user.avatar = avatar.secure_url || user.avatar;
     user.avatarPublicId = avatar.public_id;
-    user.userName = body.userName;
-    user.gender = body.gender;
+
+    // Update user profile fields
+    if (body.userName) {
+      user.userName = body.userName;
+    }
+
+    if (body.gender) {
+      user.gender = body.gender;
+    }
+    const updatedUser = await this._UserRepository.save(user);
+
     if (body.email) {
       const otp = generate(10);
       // set otp in cache manager, that expires after 5 minutes
@@ -158,16 +167,41 @@ export class UserService {
       this.MailerEmailService.sendEmail({
         email: user.email,
         subject: 'Verify updating your email',
-        html: verifyEmailUpdate(''),
+        html: verifyEmailUpdate(otp, body.email),
       });
     }
 
-    const updatedUser = await this._UserRepository.save(user);
     return {
       message: `user is updated successfully ${body.email && '& OTP is sent to your email to confirm the update'}`,
       user: updatedUser,
     };
   }
 
-  async confirmEmailUpdate(otp: string, email: string) {}
+  async confirmEmailUpdate({
+    otp,
+    oldEmail,
+    newEmail,
+  }: {
+    otp: string;
+    oldEmail: string;
+    newEmail: string;
+  }) {
+    // set otp in cache manager, that expires after 5 minutes
+    const getOtp = await this.cacheManager.get(`${oldEmail}-otp`);
+    if (!getOtp || getOtp !== otp) {
+      console.log({ otp, getOtp });
+      throw new BadRequestException('invalid otp');
+    }
+    const user = await this._UserRepository.findOne({
+      where: { email: oldEmail },
+    });
+    if (!user) {
+      throw new NotFoundException('user is not found');
+    }
+    user.email = newEmail;
+
+    const updatedUser = await this._UserRepository.save(user);
+    this.cacheManager.del(`${oldEmail}-otp`);
+    return { message: 'email is updated successfully', user: updatedUser };
+  }
 }

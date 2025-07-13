@@ -82,6 +82,9 @@ export class User {
   @Column({ default: false })
   isActive: boolean;
 
+  @Column({ default: false })
+  isTyping: boolean;
+
   @Column({ type: Date, default: () => 'CURRENT_TIMESTAMP' })
   lastSeenAt: Date;
 

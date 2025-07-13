@@ -25,7 +25,6 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleConnection(client: Socket, ...args: any[]) {
     try {
-      console.log({ client });
       const { auth } = client.handshake.auth.authentication;
       const bearerTxt = auth?.split(' ')[0] == 'Bearer';
       if (!bearerTxt) {
@@ -69,9 +68,6 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     await this._UserService.saveUser(friend);
     currentUser.friends.push(friend);
     await this._UserService.saveUser(currentUser);
-
-    // console.log({ currentId: client.data.user._id });
-    // console.log({ message });
   }
 
   // listen to send message event
@@ -81,12 +77,38 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     { message, to }: { message: string; to: string },
   ) {
     const receiver = this.SocketMap.get(to);
-    console.log({ message, from: client.data.user._id });
 
     // emit receive msg event
     client
       .to(receiver?.id)
       .emit('receive_message', { message, from: client.data.user._id });
+  }
+
+  //update isTyping state of the user when he is typing the message.
+  @SubscribeMessage('is_typing')
+  async handleUpdateTypingState(
+    client: Socket,
+    { isTyping, to }: { isTyping: boolean; to: string },
+  ) {
+    console.log({ isTyping });
+
+    const receiver = this.SocketMap.get(to);
+    // client.to(receiver?.id).emit('is_typing', { isTyping });
+
+    const userId = client.data.user._id;
+    const user = await this._UserService.getUserById(userId);
+
+    user.isTyping = isTyping;
+    await this._UserService.saveUser(user);
+    const receiverSocketId = receiver?._id;
+
+    // إرسال قائمة الأصدقاء المحدثة (اختياري)
+    const receiverUser = await this._UserService.getUserById(receiverSocketId);
+    if (receiverUser) {
+      client.to(receiverSocketId).emit('user_list', {
+        users: receiverUser.friends,
+      });
+    }
   }
 
   async handleDisconnect(client: Socket) {

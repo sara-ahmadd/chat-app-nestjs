@@ -160,6 +160,10 @@
         } else {
           status.innerHTML = `<span class="text-sm text-gray-500">Last seen at ${user.lastSeenAt || 'unknown'}</span>`;
         }
+        if (user.isTyping) {
+          status.innerHTML =
+            '<span class="text-green-600 text-sm flex items-center gap-1"></span> Typing....</span>';
+        }
 
         infoDiv.appendChild(username);
         infoDiv.appendChild(emailSpan);
@@ -181,6 +185,7 @@
       }
 
       socket.on('user_list', ({ users }) => {
+        console.log({ users });
         userList.innerHTML = '';
         users.forEach((user) => {
           const li = createUserListItem(user);
@@ -228,6 +233,16 @@
         }
       });
 
+      let typingTimeout;
+      chatInput.addEventListener('input', () => {
+        socket.emit('is_typing', { isTyping: true, to: selectedUser._id });
+
+        clearTimeout(typingTimeout);
+
+        typingTimeout = setTimeout(() => {
+          socket.emit('is_typing', { isTyping: false, to: selectedUser._id });
+        }, 2000);
+      });
       socket.on('receive_message', (data) => {
         const messageDiv = document.createElement('div');
         messageDiv.textContent = data.message;

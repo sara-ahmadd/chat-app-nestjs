@@ -18,16 +18,16 @@ export class ErrorHandler implements NestInterceptor {
     const res = ctx.getResponse();
     return next.handle().pipe(
       catchError((error) => {
-        // if (error instanceof HttpException) {
-        //   throw error;
-        // }
+        if (error instanceof HttpException) {
+          throw error;
+        }
         const newRes = {
           status: 'Error',
           message: error.message,
           stack: error.stack,
         };
 
-        throw new HttpException(newRes, error.getStatus());
+        throw new HttpException(newRes, 500);
       }),
     );
   }
