@@ -15,11 +15,8 @@ import { User } from '../user/user.entity';
 
 @Entity()
 export class Conversation {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column({ unique: true })
-  _id: string;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @OneToMany(() => Message, (message) => message.conversation)
   messages: Message[];

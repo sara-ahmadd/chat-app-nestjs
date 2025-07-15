@@ -38,6 +38,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return;
       }
       const user = await this._UserService.getUserById(payload._id);
+      console.log({ client: user.email });
       if (!user) {
         throw new NotFoundException('user is not found');
       }
@@ -49,6 +50,10 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('get_my_profile', { user: updatedUser });
       // on connection get users' friends
       client.emit('user_list', { users: user.friends });
+      // on connection update users' friends
+      client
+        .to([...user.friends.map((item) => item._id)])
+        .emit('user_activity_status', { user: updatedUser });
     } catch (error) {
       throw new BadRequestException(error);
     }
@@ -93,25 +98,20 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log({ isTyping });
 
     const receiver = this.SocketMap.get(to);
-    // client.to(receiver?.id).emit('is_typing', { isTyping });
 
     const userId = client.data.user._id;
     const user = await this._UserService.getUserById(userId);
 
     user.isTyping = isTyping;
     await this._UserService.saveUser(user);
-    const receiverSocketId = receiver?._id;
-
-    // إرسال قائمة الأصدقاء المحدثة (اختياري)
-    const receiverUser = await this._UserService.getUserById(receiverSocketId);
-    if (receiverUser) {
-      client.to(receiverSocketId).emit('user_list', {
-        users: receiverUser.friends,
-      });
-    }
+    client
+      .to(receiver?.id)
+      .emit('listen_typing', { isTyping, sender: client.data.user });
   }
 
   async handleDisconnect(client: Socket) {
+    console.log('Disconnected client has no user data', client.data.user.email);
+
     const userData = client.data.user as User;
     const user = await this._UserService.getUserById(userData?._id);
     if (!user) {
@@ -120,7 +120,11 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // update online status of connected user
     user.isOnline = false;
     user.lastSeenAt = new Date();
-    await this._UserService.saveUser(user);
+    const updateUser = await this._UserService.saveUser(user);
+    // on connection get users' friends
+    client
+      .to([...user.friends.map((item) => item._id)])
+      .emit('user_activity_status', { user: { ...user, isOnline: false } });
     this.SocketMap.delete(client.data.user._id);
   }
 }

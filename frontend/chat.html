@@ -154,15 +154,17 @@
         emailSpan.className = 'text-sm text-gray-600';
 
         const status = document.createElement('div');
+        status.id = `status-${user._id}`;
+
         if (user.isOnline) {
           status.innerHTML =
             '<span class="text-green-600 text-sm flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-green-500"></span> Online</span>';
         } else {
-          status.innerHTML = `<span class="text-sm text-gray-500">Last seen at ${user.lastSeenAt || 'unknown'}</span>`;
+          status.innerHTML = `<span class="text-sm text-gray-500">Last seen at ${user.lastSeenAt || ''}</span>`;
         }
         if (user.isTyping) {
           status.innerHTML =
-            '<span class="text-green-600 text-sm flex items-center gap-1"></span> Typing....</span>';
+            '<span class="text-green-600 text-sm flex items-center gap-1">Typing....</span>';
         }
 
         infoDiv.appendChild(username);
@@ -183,12 +185,34 @@
 
         return li;
       }
-
+      socket.on('user_activity_status', ({ user }) => {
+        console.log({ user });
+        updateSelectedUserStatus(user);
+      });
+      socket.on('listen_typing', ({ isTyping, sender }) => {
+        updateSelectedUserStatus(sender, isTyping);
+      });
+      function updateSelectedUserStatus(user, isTyping = false) {
+        const targetUser = document.querySelector(`#status-${user._id}`);
+        if (isTyping) {
+          targetUser.innerHTML =
+            '<span class="text-green-600 text-sm flex items-center font-bold gap-1">Typing....</span>';
+        } else {
+          if (user.isOnline) {
+            targetUser.innerHTML =
+              '<span class="text-green-600 text-sm flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-green-500"></span> Online</span>';
+          } else {
+            targetUser.innerHTML = `<span class="text-sm text-gray-500">Last seen at ${user.lastSeenAt || 'unknown'}</span>`;
+          }
+        }
+      }
+      //get updated data for current users' friends
       socket.on('user_list', ({ users }) => {
         console.log({ users });
         userList.innerHTML = '';
         users.forEach((user) => {
           const li = createUserListItem(user);
+          li.id = user._id;
           userList.appendChild(li);
         });
       });
