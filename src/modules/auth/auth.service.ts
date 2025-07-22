@@ -38,7 +38,7 @@ export class AuthService {
   async sendOtp(email: string) {
     const otp = generate(10);
     // set otp in cache manager, that expires after 5 minutes
-    await this.cacheManager.set(`${email}-otp`, otp, 300000); //300000 ms
+    await this.cacheManager.set(`${email}-otp`, otp, 600000); //300000 ms
 
     await this.MailerEmailService.sendEmail({
       email: email,
@@ -88,5 +88,7 @@ export class AuthService {
     return { message: 'user logged in successfully', token, refreshToken };
   }
 
-  async resetPassword() {}
+  async resetPassword() {
+    console.log('reset');
+  }
 }

@@ -1,4 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
@@ -7,15 +8,24 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { FilesService } from 'src/common/services/files.service';
 import { JWTFunctions } from 'src/common/services/jwt-service.service';
+import { ConversationService } from 'src/modules/conversation/conversation.service';
+import { Message } from 'src/modules/message/message.entity';
+import { MessageService } from 'src/modules/message/message.service';
 import { User } from 'src/modules/user/user.entity';
 import { UserService } from 'src/modules/user/user.service';
+import { base64ToMulterFile } from 'src/utils/helpers/base64ToFile';
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly _JWTFunctions: JWTFunctions,
     private readonly _UserService: UserService,
+    private readonly _ConversationService: ConversationService,
+    private readonly _MessageService: MessageService,
+    private readonly filesService: FilesService,
+    private readonly _ConfigService: ConfigService,
   ) {}
 
   @WebSocketServer() server: Server;
@@ -26,13 +36,14 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleConnection(client: Socket, ...args: any[]) {
     try {
       const { auth } = client.handshake.auth.authentication;
+      console.log({ auth });
       const bearerTxt = auth?.split(' ')[0] == 'Bearer';
       if (!bearerTxt) {
         throw new BadRequestException('Token is invalid');
       }
       const token = auth?.split(' ')[1];
       const payload = this._JWTFunctions.decodeToken(token);
-
+      console.log({ payload });
       if (!payload?._id) {
         client.emit('token_error', 'No token received!');
         return;
@@ -126,5 +137,53 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       .to([...user.friends.map((item) => item._id)])
       .emit('user_activity_status', { user: { ...user, isOnline: false } });
     this.SocketMap.delete(client.data.user._id);
+  }
+
+  async saveMessageToDB(
+    sender: User,
+    receiver: User,
+    message: string,
+    image?: string,
+  ) {
+    //find conversation by
+    const conversation =
+      await this._ConversationService.getConversationByParticipants(
+        sender,
+        receiver,
+      );
+    let newImg: { secure_url: string; public_id: string } | undefined =
+      undefined;
+    if (image) {
+      const { secure_url, public_id } = await this.filesService.uploadFile(
+        base64ToMulterFile(image, 'img'),
+        {
+          folder: `${this._ConfigService.get('CLOUD_APP_FOLDER')}/messagesImages/}`,
+        },
+      );
+      newImg = { secure_url, public_id };
+    }
+    let newMessage: Message;
+    //if found add the new message to the found conversation
+    if (conversation) {
+      //create new message in DB add to it the text then if there is an image
+      newMessage = await this._MessageService.createNewMessage({
+        sentBy: sender,
+        contentText: message,
+        contentImgUrl: image ? newImg?.secure_url : undefined,
+        conversation,
+      });
+    } else {
+      //if not found create one
+      const newConversation =
+        await this._ConversationService.createNewConversation({
+          participants: [sender, receiver],
+        });
+      newMessage = await this._MessageService.createNewMessage({
+        sentBy: sender,
+        contentText: message,
+        contentImgUrl: image ? newImg?.secure_url : undefined,
+        conversation: newConversation,
+      });
+    }
   }
 }

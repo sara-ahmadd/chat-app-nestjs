@@ -4,6 +4,7 @@ import { FindOptionsRelations, FindOptionsSelect, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { Conversation } from './conversation.entity';
+import { User } from '../user/user.entity';
 
 export class ConversationRepository extends AbstractDBRepository<Conversation> {
   constructor(
@@ -41,6 +42,28 @@ export class ConversationRepository extends AbstractDBRepository<Conversation> {
     }
 
     return Conversation;
+  }
+  /**
+   * Search for a Conversation by participants Ids
+   * @param usersIds
+   * @returns Conversation entity
+   */
+  async getConversationByParticipants(users: User[]) {
+    const conversation = await this.repository
+      .createQueryBuilder('conversation')
+      .leftJoin('conversation.participants', 'participant')
+      .where('participant.id IN (:...ids)', {
+        ids: users.map((user) => user.id),
+      })
+      .groupBy('conversation.id')
+      .having('COUNT(participant.d) = :count', { count: users.length })
+      .getOne();
+
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    return conversation;
   }
 
   async updateConversation(
