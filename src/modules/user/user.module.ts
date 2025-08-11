@@ -10,9 +10,14 @@ import {
   Cloudinary,
   CLOUDINARY,
 } from 'src/common/providers/fileCloudServices/cloudinary.provider';
+import { ConversationModule } from '../conversation/conversation.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), forwardRef(() => AuthModule)],
+  imports: [
+    TypeOrmModule.forFeature([User]),
+    forwardRef(() => AuthModule),
+    forwardRef(() => ConversationModule),
+  ],
   controllers: [UserController],
   providers: [UserService, UserRepository, FilesService],
   exports: [UserService, UserRepository, FilesService],

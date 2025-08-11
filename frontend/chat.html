@@ -66,7 +66,24 @@
           class="flex-1 overflow-y-auto bg-white rounded p-4 space-y-2 border"
         ></div>
 
-        <form id="chat-form" class="mt-4 hidden flex gap-2">
+        <!-- Chat form -->
+
+        <form id="chat-form" class="mt-4 hidden flex gap-2 items-center">
+          <!-- ✅ تمت إضافته أسفل الفورم مباشرة لعرض معاينة الصورة -->
+          <div
+            id="image-preview-container"
+            class="mt-2 hidden bg-white border border-gray-300 rounded p-2 w-fit"
+          >
+            <img id="image-preview" class="max-h-40 rounded" />
+          </div>
+          <input type="file" id="chat-image" accept="image/*" class="hidden" />
+          <label
+            for="chat-image"
+            class="cursor-pointer bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300"
+          >
+            📷
+          </label>
+
           <input
             type="text"
             id="chat-input"
@@ -85,8 +102,7 @@
     </div>
 
     <script>
-      const accessToken = localStorage.getItem('refreshToken');
-
+      const accessToken = sessionStorage.getItem('refreshToken');
       if (!accessToken) {
         window.location.href = 'login.html';
         throw new Error('no token is found');
@@ -99,11 +115,11 @@
           },
         },
       });
+
       socket.on('token_error', (data) => {
         console.log({ data });
       });
 
-      //get current user data
       socket.on('get_my_profile', ({ user }) => {
         document.getElementById('username').textContent =
           user.userName || user.email;
@@ -129,8 +145,21 @@
       const chatBox = document.getElementById('chat-box');
       const chatForm = document.getElementById('chat-form');
       const chatInput = document.getElementById('chat-input');
+      const chatImage = document.getElementById('chat-image');
 
       let selectedUser = null;
+      let selectedImageBase64 = null;
+
+      chatImage.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            selectedImageBase64 = reader.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
 
       function createUserListItem(user) {
         const li = document.createElement('li');
@@ -179,19 +208,59 @@
           chatHeader.textContent = `Chat with ${user.userName || user.email}`;
           chatForm.classList.remove('hidden');
           chatBox.innerHTML = '';
-          socket.emit('load_conversation', { to: user._id });
+          socket.emit('get_chat', { receiverId: user._id });
+          socket.on('whole_chat', ({ chat }) => {
+            if (!chat || !chat.length || !chat[0].messages) return;
+
+            const messages = chat[0].messages;
+            chatBox.innerHTML = ''; // Clear previous messages
+
+            messages.forEach((msg) => {
+              const messageDiv = document.createElement('div');
+
+              // Message content
+              if (msg.contentImgUrl) {
+                const img = document.createElement('img');
+                img.src = msg.contentImgUrl;
+                img.className = 'max-w-xs rounded shadow-md';
+                messageDiv.appendChild(img);
+              }
+
+              if (msg.contentText) {
+                const p = document.createElement('p');
+                p.textContent = msg.contentText;
+                messageDiv.appendChild(p);
+              }
+
+              // Alignment: check if sender is me or not
+              if (msg.sender === user._id) {
+                messageDiv.className =
+                  'self-end text-right bg-blue-100 p-2 rounded w-fit ml-auto';
+              } else {
+                messageDiv.className =
+                  'self-start text-left bg-gray-100 p-2 rounded w-fit mr-auto';
+              }
+
+              chatBox.appendChild(messageDiv);
+            });
+
+            chatBox.scrollTop = chatBox.scrollHeight;
+          });
+
           socket.emit('add_friend', { friendId: user._id });
         });
 
         return li;
       }
+
       socket.on('user_activity_status', ({ user }) => {
-        console.log({ user });
         updateSelectedUserStatus(user);
       });
+
       socket.on('listen_typing', ({ isTyping, sender }) => {
         updateSelectedUserStatus(sender, isTyping);
       });
+
       function updateSelectedUserStatus(user, isTyping = false) {
         const targetUser = document.querySelector(`#status-${user._id}`);
         if (isTyping) {
@@ -206,9 +275,41 @@
           }
         }
       }
-      //get updated data for current users' friends
+
+      //send images inside chat
+      // ✅ تعديل listener لاختيار الصورة - عرض المعاينة
+      chatImage.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            selectedImageBase64 = reader.result;
+
+            // عرض المعاينة
+            const previewContainer = document.getElementById(
+              'image-preview-container',
+            );
+            const previewImage = document.getElementById('image-preview');
+            previewImage.src = selectedImageBase64;
+            previewContainer.classList.remove('hidden');
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+      // ✅ تعديل داخل chatForm.addEventListener لإخفاء المعاينة بعد الإرسال
+      chatInput.value = '';
+      selectedImageBase64 = null;
+      chatImage.value = null;
+
+      // إخفاء المعاينة بعد الإرسال
+      const previewContainer = document.getElementById(
+        'image-preview-container',
+      );
+      const previewImage = document.getElementById('image-preview');
+      previewImage.src = '';
+      previewContainer.classList.add('hidden');
+
       socket.on('user_list', ({ users }) => {
-        console.log({ users });
         userList.innerHTML = '';
         users.forEach((user) => {
           const li = createUserListItem(user);
@@ -267,9 +368,22 @@
           socket.emit('is_typing', { isTyping: false, to: selectedUser._id });
         }, 2000);
       });
+
       socket.on('receive_message', (data) => {
         const messageDiv = document.createElement('div');
-        messageDiv.textContent = data.message;
+
+        if (data.image) {
+          const img = document.createElement('img');
+          img.src = data.image;
+          img.className = 'max-w-xs rounded shadow-md';
+          messageDiv.appendChild(img);
+        }
+
+        if (data.message) {
+          const p = document.createElement('p');
+          p.textContent = data.message;
+          messageDiv.appendChild(p);
+        }
 
         if (data.from === selectedUser._id) {
           messageDiv.className = 'text-left bg-gray-100 p-2 rounded w-fit';
@@ -287,19 +401,36 @@
         if (!selectedUser) return;
 
         const message = chatInput.value;
+        chatImage.innerHTML = '';
         socket.emit('send_message', {
           to: selectedUser._id,
           message,
+          image: selectedImageBase64 || null,
         });
 
         const messageDiv = document.createElement('div');
-        messageDiv.textContent = message;
+        if (selectedImageBase64) {
+          const img = document.createElement('img');
+          img.src = selectedImageBase64;
+          img.className = 'max-w-xs rounded shadow-md';
+          messageDiv.appendChild(img);
+        }
+
+        if (message) {
+          const p = document.createElement('p');
+          p.textContent = message;
+          messageDiv.appendChild(p);
+        }
+
         messageDiv.className =
           'text-right bg-blue-100 p-2 rounded self-end w-fit ml-auto';
+
         chatBox.appendChild(messageDiv);
         chatBox.scrollTop = chatBox.scrollHeight;
 
         chatInput.value = '';
+        selectedImageBase64 = null;
+        chatImage.value = null;
       });
     </script>
   </body>

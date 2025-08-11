@@ -18,7 +18,10 @@ export class Conversation {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @OneToMany(() => Message, (message) => message.conversation)
+  @OneToMany(() => Message, (message) => message.conversation, {
+    cascade: true,
+    eager: true,
+  })
   messages: Message[];
 
   @ManyToMany(() => User)

@@ -42,7 +42,7 @@
     </div>
 
     <script>
-      const accessToken = localStorage.getItem('accessToken');
+      const accessToken = sessionStorage.getItem('accessToken');
       const form = document.getElementById('login-form');
 
       form.addEventListener('submit', async function (e) {
@@ -64,8 +64,8 @@
 
             if (!res.ok) throw new Error('Login failed');
 
-            localStorage.setItem('accessToken', parsedRes.token);
-            localStorage.setItem('refreshToken', parsedRes.refreshToken);
+            sessionStorage.setItem('accessToken', parsedRes.token);
+            sessionStorage.setItem('refreshToken', parsedRes.refreshToken);
 
             window.location.href = 'chat.html';
           } catch (err) {

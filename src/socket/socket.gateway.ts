@@ -36,20 +36,23 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleConnection(client: Socket, ...args: any[]) {
     try {
       const { auth } = client.handshake.auth.authentication;
-      console.log({ auth });
+      // console.log({ auth });
       const bearerTxt = auth?.split(' ')[0] == 'Bearer';
       if (!bearerTxt) {
         throw new BadRequestException('Token is invalid');
       }
       const token = auth?.split(' ')[1];
+
+      //verify token before moving further
+      await this._JWTFunctions.verifyToken(token);
       const payload = this._JWTFunctions.decodeToken(token);
-      console.log({ payload });
+      // console.log({ payload });
       if (!payload?._id) {
         client.emit('token_error', 'No token received!');
         return;
       }
       const user = await this._UserService.getUserById(payload._id);
-      console.log({ client: user.email });
+      // console.log({ client: user.email });
       if (!user) {
         throw new NotFoundException('user is not found');
       }
@@ -66,7 +69,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
         .to([...user.friends.map((item) => item._id)])
         .emit('user_activity_status', { user: updatedUser });
     } catch (error) {
-      throw new BadRequestException(error);
+      throw new BadRequestException(error.message || 'expired / invalid token');
     }
   }
 
@@ -86,18 +89,25 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     await this._UserService.saveUser(currentUser);
   }
 
+  //listen to fetch all chat history
+  @SubscribeMessage('fetch_chat_history')
+  async handleFetchChatHistory(client: Socket) {}
+
   // listen to send message event
   @SubscribeMessage('send_message')
   async handleReceiveMsg(
     client: Socket,
-    { message, to }: { message: string; to: string },
+    { message, to, image }: { message: string; to: string; image?: string },
   ) {
     const receiver = this.SocketMap.get(to);
+    const receiverUser = await this._UserService.getUserById(receiver?._id);
 
     // emit receive msg event
     client
       .to(receiver?.id)
-      .emit('receive_message', { message, from: client.data.user._id });
+      .emit('receive_message', { message, from: client.data.user._id, image });
+    // console.log({ sender: client.data.user, receiverUser, message, image });
+    await this.saveMessageToDB(client.data.user, receiverUser, message, image);
   }
 
   //update isTyping state of the user when he is typing the message.
@@ -106,7 +116,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client: Socket,
     { isTyping, to }: { isTyping: boolean; to: string },
   ) {
-    console.log({ isTyping });
+    // console.log({ isTyping });
 
     const receiver = this.SocketMap.get(to);
 
@@ -120,8 +130,19 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       .emit('listen_typing', { isTyping, sender: client.data.user });
   }
 
+  // listen to event that fetches the whole chat between 2 participants
+  @SubscribeMessage('get_chat')
+  async getPrivateChat(client: Socket, { receiverId }: { receiverId: string }) {
+    console.log({ sender: client.data.user._id, receiverId });
+    const sender = client.data.user;
+    const receiver = await this._UserService.getUserById(receiverId);
+    const chat = await this._ConversationService.getWholeChat(sender, receiver);
+    console.log({ chat });
+    client.emit('whole_chat', { chat });
+  }
+
   async handleDisconnect(client: Socket) {
-    console.log('Disconnected client has no user data', client.data.user.email);
+    // console.log('Disconnected client has no user data', client.data.user.email);
 
     const userData = client.data.user as User;
     const user = await this._UserService.getUserById(userData?._id);
@@ -145,12 +166,14 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     message: string,
     image?: string,
   ) {
+    console.log({ sender: sender.id, receiver: receiver.id });
     //find conversation by
     const conversation =
       await this._ConversationService.getConversationByParticipants(
         sender,
         receiver,
       );
+
     let newImg: { secure_url: string; public_id: string } | undefined =
       undefined;
     if (image) {
@@ -172,12 +195,15 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
         contentImgUrl: image ? newImg?.secure_url : undefined,
         conversation,
       });
+
+      return;
     } else {
       //if not found create one
       const newConversation =
         await this._ConversationService.createNewConversation({
           participants: [sender, receiver],
         });
+
       newMessage = await this._MessageService.createNewMessage({
         sentBy: sender,
         contentText: message,
@@ -185,5 +211,9 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
         conversation: newConversation,
       });
     }
+  }
+
+  async getChat(sender: User, receiver: User) {
+    return this._ConversationService.getWholeChat(sender, receiver);
   }
 }

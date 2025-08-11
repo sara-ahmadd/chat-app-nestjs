@@ -20,13 +20,17 @@ export class AuthGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    if (isPublic) return true;
-    const ctx = context.switchToHttp();
-    const req = ctx.getRequest();
-    const token = this.extractTokenFromHeaders(req);
-    const { _id, email } = await this.JWTService.verifyAsync(token);
-    req['user'] = { _id, email };
-    return true;
+    try {
+      if (isPublic) return true;
+      const ctx = context.switchToHttp();
+      const req = ctx.getRequest();
+      const token = this.extractTokenFromHeaders(req);
+      const { _id, email } = await this.JWTService.verifyAsync(token);
+      req['user'] = { _id, email };
+      return true;
+    } catch (error) {
+      throw new BadRequestException('Expired/Invalid token !!');
+    }
   }
 
   extractTokenFromHeaders(req: Request) {

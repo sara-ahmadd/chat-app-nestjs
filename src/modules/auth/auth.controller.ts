@@ -29,4 +29,6 @@ export class AuthController {
   login(@Body() body: LoginDto) {
     return this.authService.login(body);
   }
+  //forgot password
+  //reset password
 }

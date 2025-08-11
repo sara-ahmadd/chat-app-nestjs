@@ -76,6 +76,16 @@ export class UserService {
       throw new InternalServerErrorException(error);
     }
   }
+  async getUserByEmail(email: string) {
+    try {
+      const user = await this._UserRepository.getUserByEmail(email, {
+        friends: true,
+      });
+      return user;
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
   async getUserProfile(_id: string) {
     try {
       const user = await this._UserRepository.getUserBy_Id(_id);

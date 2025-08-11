@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtVerifyOptions } from '@nestjs/jwt';
 import { UserService } from 'src/modules/user/user.service';
@@ -28,5 +28,13 @@ export class JWTFunctions {
   } {
     const payload = this.JWTService.decode(token);
     return payload;
+  }
+  async verifyToken(token: string) {
+    try {
+      const { _id, email } = await this.JWTService.verifyAsync(token);
+      return { _id, email };
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
   }
 }

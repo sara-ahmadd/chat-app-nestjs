@@ -18,9 +18,16 @@ export class ConversationRepository extends AbstractDBRepository<Conversation> {
     const Conversations = await this.repository.find();
     return Conversations;
   }
-
   async create({ data }: { data: Partial<Conversation> }) {
     const entity = this.repository.create(data);
+
+    // TypeORM's `create()` method does not automatically assign relational fields (like ManyToMany).
+    // Even if `data.participants` is present, it might not be assigned to the entity properly.
+    // Therefore, we explicitly assign `participants` to ensure the relationship is recognized and persisted.
+    if (data.participants && data.participants.length > 0) {
+      entity.participants = data.participants;
+    }
+
     return this.repository.save(entity);
   }
 
@@ -49,21 +56,39 @@ export class ConversationRepository extends AbstractDBRepository<Conversation> {
    * @returns Conversation entity
    */
   async getConversationByParticipants(users: User[]) {
+    const usersIds = users.map((user) => user.id);
+    const usersCount = users.length;
     const conversation = await this.repository
       .createQueryBuilder('conversation')
+      .select('conversation.id')
       .leftJoin('conversation.participants', 'participant')
-      .where('participant.id IN (:...ids)', {
-        ids: users.map((user) => user.id),
+      .where('participant.id IN (:...usersIds)', {
+        usersIds,
       })
       .groupBy('conversation.id')
-      .having('COUNT(participant.d) = :count', { count: users.length })
       .getOne();
 
-    if (!conversation) {
-      throw new NotFoundException('Conversation not found');
-    }
-
     return conversation;
+  }
+  async getWholeChat(users: User[]) {
+    const usersIds = users.map((user) => user.id);
+    const usersCount = users.length;
+    const conversation = await this.repository
+      .createQueryBuilder('conversation')
+      .select('conversation.id')
+      .leftJoin('conversation.participants', 'participant')
+      .where('participant.id IN (:...usersIds)', {
+        usersIds,
+      })
+      .groupBy('conversation.id')
+      .having('COUNT(participant.id) = :usersCount', { usersCount })
+      .getOne();
+
+    const fullConversation = await this.repository.find({
+      where: { id: conversation?.id },
+      relations: ['participants'],
+    });
+    return fullConversation;
   }
 
   async updateConversation(
