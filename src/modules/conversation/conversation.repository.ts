@@ -1,10 +1,16 @@
 import { AbstractDBRepository } from 'src/DB/db.repository';
-import { FindOptionsRelations, FindOptionsSelect, Repository } from 'typeorm';
+import {
+  FindOptionsRelations,
+  FindOptionsSelect,
+  In,
+  Repository,
+} from 'typeorm';
 
 import { InjectRepository } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { Conversation } from './conversation.entity';
 import { User } from '../user/user.entity';
+import { decryptEmojieText } from 'src/utils/helpers/encryptEmojiesText';
 
 export class ConversationRepository extends AbstractDBRepository<Conversation> {
   constructor(
@@ -60,37 +66,102 @@ export class ConversationRepository extends AbstractDBRepository<Conversation> {
     const usersCount = users.length;
     const conversation = await this.repository
       .createQueryBuilder('conversation')
-      .select('conversation.id')
-      .leftJoin('conversation.participants', 'participant')
-      .where('participant.id IN (:...usersIds)', {
-        usersIds,
-      })
+      .innerJoin('conversation.participants', 'participant')
+      .where('participant.id IN (:...usersIds)', { usersIds })
       .groupBy('conversation.id')
+      .having('COUNT(participant.id) = :usersCount', {
+        usersCount,
+      })
+      .andHaving('COUNT(participant.id) = COUNT(DISTINCT participant.id)') // Ensure no duplicates
       .getOne();
 
     return conversation;
   }
+  /**
+   * Search for all Conversations of a certain participant
+   * @param user
+   * @returns Conversation entity
+   */
+  async getConversationsOfAParticipant(user: User) {
+    // const usersIds = users.map((user) => user.id);
+    //get the targetted conversation
+    const conversations = await this.repository
+      .createQueryBuilder('conversation')
+      // .select(['conversation.id']) //get the id column only from conversation
+      .leftJoin('conversation.participants', 'participant') //join to participants(users table)
+      .where('participant.id = :id', {
+        id: user.id,
+      })
+      .groupBy('conversation.id')
+      // .having('COUNT(participant.id) = :usersCount', { usersCount })
+      .getMany();
+    // get the whole convrsation with messages & participants data
+    const convIds = conversations.map((c) => c.id);
+    const fullConversation = await this.repository.find({
+      where: { id: In(convIds) },
+      relations: {
+        participants: true,
+        messages: {
+          conversation: true,
+          sentBy: true,
+        },
+      },
+      order: {
+        messages: { createdAt: 'ASC' },
+      },
+    });
+
+    return fullConversation;
+  }
+
   async getWholeChat(users: User[]) {
     const usersIds = users.map((user) => user.id);
     const usersCount = users.length;
+    //get the targetted conversation
     const conversation = await this.repository
       .createQueryBuilder('conversation')
-      .select('conversation.id')
-      .leftJoin('conversation.participants', 'participant')
+      .select(['conversation.id']) //get the id column only from conversation
+      .leftJoin('conversation.participants', 'participant') //join to participants(users table)
       .where('participant.id IN (:...usersIds)', {
         usersIds,
       })
       .groupBy('conversation.id')
-      .having('COUNT(participant.id) = :usersCount', { usersCount })
+      // .having('COUNT(participant.id) = :usersCount', { usersCount })
       .getOne();
-
+    // get the whole convrsation with messages & participants data
     const fullConversation = await this.repository.find({
       where: { id: conversation?.id },
-      relations: ['participants'],
+      relations: {
+        participants: true,
+        messages: {
+          conversation: true,
+          sentBy: true,
+        },
+      },
+      order: {
+        messages: { createdAt: 'ASC' },
+      },
     });
+
     return fullConversation;
   }
+  // get chat of a group
 
+  async getGroupChat(convId: string) {
+    const conv = await this.repository
+      .createQueryBuilder('conversation')
+      .leftJoin('conversation.messages', 'message')
+      .leftJoin('conversation.participants', 'user')
+      .where('conversation.id = :id', { id: convId })
+      .getOne();
+    const fullConversation = await this.repository.find({
+      where: { id: conv?.id },
+      relations: { participants: true, messages: { sentBy: true } },
+      order: { messages: { createdAt: 'ASC' } },
+    });
+    console.log({ fullConversation });
+    return fullConversation;
+  }
   async updateConversation(
     ConversationId: string,
     updateData: Partial<Conversation>,

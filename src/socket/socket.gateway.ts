@@ -16,6 +16,7 @@ import { MessageService } from 'src/modules/message/message.service';
 import { User } from 'src/modules/user/user.entity';
 import { UserService } from 'src/modules/user/user.service';
 import { base64ToMulterFile } from 'src/utils/helpers/base64ToFile';
+import { encryptEmojieText } from 'src/utils/helpers/encryptEmojiesText';
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -62,6 +63,9 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       user.isOnline = true;
       const updatedUser = await this._UserService.saveUser(user);
       client.emit('get_my_profile', { user: updatedUser });
+      const conversations = await this.getMyGroups(user);
+
+      client.emit('get_my_groups', { conversations });
       // on connection get users' friends
       client.emit('user_list', { users: user.friends });
       // on connection update users' friends
@@ -69,7 +73,8 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
         .to([...user.friends.map((item) => item._id)])
         .emit('user_activity_status', { user: updatedUser });
     } catch (error) {
-      throw new BadRequestException(error.message || 'expired / invalid token');
+      console.log({ error });
+      client.emit('token_error', 'No token received!');
     }
   }
 
@@ -89,10 +94,6 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     await this._UserService.saveUser(currentUser);
   }
 
-  //listen to fetch all chat history
-  @SubscribeMessage('fetch_chat_history')
-  async handleFetchChatHistory(client: Socket) {}
-
   // listen to send message event
   @SubscribeMessage('send_message')
   async handleReceiveMsg(
@@ -107,7 +108,35 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       .to(receiver?.id)
       .emit('receive_message', { message, from: client.data.user._id, image });
     // console.log({ sender: client.data.user, receiverUser, message, image });
-    await this.saveMessageToDB(client.data.user, receiverUser, message, image);
+    await this.saveMessageToDB(
+      client.data.user,
+      [client.data.user, receiverUser] as User[],
+      message,
+      image,
+    );
+  }
+  // listen to send message event
+  @SubscribeMessage('send_group_message')
+  async handleSendingMsgToGroup(
+    client: Socket,
+    {
+      group,
+      message,
+      image,
+    }: { message: string; group: string; image?: string },
+  ) {
+    const groupConv =
+      await this._ConversationService.getConversationById(group);
+    // emit receive msg event
+    client
+      .to(groupConv.participants.map((user) => user._id))
+      .emit('receive_message', { message, from: client.data.user._id, image });
+    await this.saveMessageToDB(
+      client.data.user,
+      groupConv.participants,
+      message,
+      image,
+    );
   }
 
   //update isTyping state of the user when he is typing the message.
@@ -140,6 +169,14 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log({ chat });
     client.emit('whole_chat', { chat });
   }
+  @SubscribeMessage('get_group_chat')
+  async getGroupChat(client: Socket, { groupId }: { groupId: string }) {
+    console.log({ groupId });
+
+    const chat = await this._ConversationService.getGroupChat(groupId);
+    console.log({ chat });
+    client.emit('whole_group_chat', { chat });
+  }
 
   async handleDisconnect(client: Socket) {
     // console.log('Disconnected client has no user data', client.data.user.email);
@@ -162,18 +199,15 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async saveMessageToDB(
     sender: User,
-    receiver: User,
+    users: User[],
     message: string,
     image?: string,
   ) {
-    console.log({ sender: sender.id, receiver: receiver.id });
+    // console.log({ sender: users[0].id, receiver: users[1].id });
     //find conversation by
     const conversation =
-      await this._ConversationService.getConversationByParticipants(
-        sender,
-        receiver,
-      );
-
+      await this._ConversationService.getConversationByParticipants(users);
+    // console.log({ groupChat: conversation });
     let newImg: { secure_url: string; public_id: string } | undefined =
       undefined;
     if (image) {
@@ -201,7 +235,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       //if not found create one
       const newConversation =
         await this._ConversationService.createNewConversation({
-          participants: [sender, receiver],
+          participants: users,
         });
 
       newMessage = await this._MessageService.createNewMessage({
@@ -215,5 +249,10 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async getChat(sender: User, receiver: User) {
     return this._ConversationService.getWholeChat(sender, receiver);
+  }
+
+  // get all groups in which current user is participated
+  async getMyGroups(user: User) {
+    return this._ConversationService.getConversationsOfAParticipant(user);
   }
 }

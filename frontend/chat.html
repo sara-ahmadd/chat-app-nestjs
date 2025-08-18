@@ -32,6 +32,7 @@
         </div>
         <h2 class="text-xl font-bold mb-4">Users</h2>
         <ul id="user-list" class="space-y-2 w-full"></ul>
+        <ul id="group-list" class="space-y-2 w-full"></ul>
       </div>
 
       <!-- Chat area -->
@@ -121,6 +122,7 @@
       });
 
       socket.on('get_my_profile', ({ user }) => {
+        localStorage.setItem('current_user', JSON.stringify(user));
         document.getElementById('username').textContent =
           user.userName || user.email;
         document.getElementById('email').textContent = user.email || '';
@@ -167,16 +169,26 @@
           'cursor-pointer p-3 rounded hover:bg-gray-100 flex items-center gap-3 border border-gray-200';
 
         const avatar = document.createElement('img');
-        avatar.src = user.avatar || 'https://via.placeholder.com/40';
+        avatar.src =
+          user.avatar ||
+          'https://res.cloudinary.com/dpiuyacez/image/upload/v1755259108/Screenshot_2025-08-15_145728_d6yoay.png';
         avatar.alt = 'avatar';
         avatar.className = 'w-10 h-10 rounded-full object-cover';
 
         const infoDiv = document.createElement('div');
         infoDiv.className = 'flex flex-col';
-
-        const username = document.createElement('span');
-        username.textContent = user.userName || 'Unnamed';
-        username.className = 'font-medium';
+        if (user.isGroup) {
+          console.log({ user });
+          const groupName = document.createElement('span');
+          groupName.textContent = user.title || 'Group';
+          groupName.className = 'font-medium';
+          infoDiv.appendChild(groupName);
+        } else {
+          const username = document.createElement('span');
+          username.textContent = user.userName || 'Unnamed';
+          username.className = 'font-medium';
+          infoDiv.appendChild(username);
+        }
 
         const emailSpan = document.createElement('span');
         emailSpan.textContent = user.email || 'No email';
@@ -196,7 +208,6 @@
             '<span class="text-green-600 text-sm flex items-center gap-1">Typing....</span>';
         }
 
-        infoDiv.appendChild(username);
         infoDiv.appendChild(emailSpan);
         infoDiv.appendChild(status);
 
@@ -210,6 +221,7 @@
           chatBox.innerHTML = '';
           socket.emit('get_chat', { receiverId: user._id });
           socket.on('whole_chat', ({ chat }) => {
+            console.log({ chat });
             if (!chat || !chat.length || !chat[0].messages) return;
 
             const messages = chat[0].messages;
@@ -217,7 +229,11 @@
 
             messages.forEach((msg) => {
               const messageDiv = document.createElement('div');
-
+              const senderDiv = document.createElement('div');
+              if (user.isGroup) {
+                senderDiv.innerText = user.userName || user.title;
+                chatBox.appendChild(senderDiv);
+              }
               // Message content
               if (msg.contentImgUrl) {
                 const img = document.createElement('img');
@@ -233,12 +249,12 @@
               }
 
               // Alignment: check if sender is me or not
-              if (msg.sender === user._id) {
-                messageDiv.className =
-                  'self-end text-right bg-blue-100 p-2 rounded w-fit ml-auto';
-              } else {
+              if (msg.sentBy._id === user._id) {
                 messageDiv.className =
                   'self-start text-left bg-gray-100 p-2 rounded w-fit mr-auto';
+              } else {
+                messageDiv.className =
+                  'self-end text-right bg-blue-100 p-2 rounded w-fit ml-auto';
               }
 
               chatBox.appendChild(messageDiv);
@@ -252,7 +268,159 @@
 
         return li;
       }
+      function renderSideMenu(conv) {
+        const userListContainer = document.getElementById('user-list');
+        const groupListContainer = document.getElementById('group-list');
 
+        // Clear old lists
+        userListContainer.innerHTML = '';
+        groupListContainer.innerHTML = '';
+
+        // --- Group item ---
+        let li = document.createElement('li');
+        li.className =
+          'cursor-pointer p-3 rounded hover:bg-gray-100 flex items-center justify-between border border-gray-200';
+
+        const leftDiv = document.createElement('div');
+        leftDiv.className = 'flex items-center gap-3';
+
+        const avatar = document.createElement('img');
+        avatar.src =
+          'https://res.cloudinary.com/dpiuyacez/image/upload/v1755259108/Screenshot_2025-08-15_145728_d6yoay.png';
+        avatar.alt = 'group avatar';
+        avatar.className = 'w-10 h-10 rounded-full object-cover';
+
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'flex flex-col';
+
+        const groupName = document.createElement('span');
+        groupName.textContent = conv.title || 'Group';
+        groupName.className = 'font-medium';
+        infoDiv.appendChild(groupName);
+
+        const membersCount = document.createElement('span');
+        membersCount.textContent = `${conv.participants?.length || 0} members`;
+        membersCount.className = 'text-sm text-gray-600';
+        infoDiv.appendChild(membersCount);
+
+        leftDiv.appendChild(avatar);
+        leftDiv.appendChild(infoDiv);
+
+        // --- Dropdown button
+        const dropdownWrapper = document.createElement('div');
+        dropdownWrapper.className = 'relative';
+
+        const dropdownBtn = document.createElement('button');
+        dropdownBtn.innerHTML = '⋮'; // 3 dots
+        dropdownBtn.className =
+          'p-2 rounded hover:bg-gray-200 text-gray-600 focus:outline-none';
+        dropdownWrapper.appendChild(dropdownBtn);
+
+        const dropdownMenu = document.createElement('div');
+        dropdownMenu.className =
+          'hidden absolute right-0 mt-2 w-64 bg-white border rounded-lg shadow-lg max-h-64 overflow-y-auto z-50';
+
+        // Participants list
+        conv.participants?.forEach((p) => {
+          const item = document.createElement('div');
+          item.className =
+            'flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-default';
+
+          const pAvatar = document.createElement('img');
+          pAvatar.src =
+            p.avatar ||
+            'https://res.cloudinary.com/dpiuyacez/image/upload/v1755259108/Screenshot_2025-08-15_145728_d6yoay.png';
+          pAvatar.className = 'w-8 h-8 rounded-full object-cover';
+
+          const pInfo = document.createElement('div');
+          pInfo.className = 'flex flex-col';
+          const uname = document.createElement('span');
+          uname.textContent = p.userName || 'Unnamed';
+          uname.className = 'font-medium text-sm';
+          const uemail = document.createElement('span');
+          uemail.textContent = p.email || '';
+          uemail.className = 'text-xs text-gray-600';
+
+          pInfo.appendChild(uname);
+          pInfo.appendChild(uemail);
+
+          item.appendChild(pAvatar);
+          item.appendChild(pInfo);
+
+          dropdownMenu.appendChild(item);
+        });
+
+        dropdownWrapper.appendChild(dropdownMenu);
+
+        // Toggle dropdown on click
+        dropdownBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          dropdownMenu.classList.toggle('hidden');
+        });
+
+        // Close dropdown if clicked outside
+        document.addEventListener('click', () => {
+          dropdownMenu.classList.add('hidden');
+        });
+
+        li.appendChild(leftDiv);
+        li.appendChild(dropdownWrapper);
+
+        // --- Group click handler
+        li.addEventListener('click', (e) => {
+          // ignore clicks on dropdown button
+          if (e.target === dropdownBtn) return;
+
+          selectedUser = conv;
+          chatHeader.textContent = `Group: ${conv.title}`;
+          chatForm.classList.remove('hidden');
+          chatBox.innerHTML = '';
+
+          socket.emit('get_group_chat', { groupId: conv.id });
+        });
+
+        groupListContainer.appendChild(li);
+      }
+
+      socket.on('whole_group_chat', ({ chat }) => {
+        console.log({ chat });
+        if (!chat || !chat.length || !chat[0].messages) return;
+        chatBox.innerHTML = '';
+        chat[0].messages.forEach((msg) => {
+          const messageDiv = document.createElement('div');
+
+          // Sender
+          const senderDiv = document.createElement('div');
+          senderDiv.innerText = msg.sentBy?.userName || 'Unknown';
+          senderDiv.className = 'text-xs text-gray-500';
+          messageDiv.appendChild(senderDiv);
+
+          // Content
+          if (msg.contentImgUrl) {
+            const img = document.createElement('img');
+            img.src = msg.contentImgUrl;
+            img.className = 'max-w-xs rounded shadow-md';
+            messageDiv.appendChild(img);
+          }
+          if (msg.contentText) {
+            const p = document.createElement('p');
+            p.textContent = msg.contentText;
+            messageDiv.appendChild(p);
+          }
+
+          // Alignment
+          if (msg.sentBy?._id === currUser?._id) {
+            messageDiv.className =
+              'self-end text-right bg-blue-100 p-2 rounded w-fit ml-auto';
+          } else {
+            messageDiv.className =
+              'self-start text-left bg-gray-100 p-2 rounded w-fit mr-auto';
+          }
+
+          chatBox.appendChild(messageDiv);
+        });
+        chatBox.scrollTop = chatBox.scrollHeight;
+      });
       socket.on('user_activity_status', ({ user }) => {
         updateSelectedUserStatus(user);
       });
@@ -277,7 +445,7 @@
       }
 
       //send images inside chat
-      // ✅ تعديل listener لاختيار الصورة - عرض المعاينة
+      //
       chatImage.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -308,6 +476,7 @@
       const previewImage = document.getElementById('image-preview');
       previewImage.src = '';
       previewContainer.classList.add('hidden');
+      const currUser = JSON.parse(`${localStorage.getItem('current_user')}`);
 
       socket.on('user_list', ({ users }) => {
         userList.innerHTML = '';
@@ -317,7 +486,14 @@
           userList.appendChild(li);
         });
       });
-
+      socket.on('get_my_groups', ({ conversations }) => {
+        conversations.forEach((conv) => {
+          if (conv.isGroup) {
+            renderSideMenu(conv);
+            console.log({ conv });
+          }
+        });
+      });
       const searchForm = document.getElementById('search-form');
       const searchInput = document.getElementById('search-email');
 
@@ -399,14 +575,26 @@
       chatForm.addEventListener('submit', (e) => {
         e.preventDefault();
         if (!selectedUser) return;
-
+        const previewContainer = document.getElementById(
+          'image-preview-container',
+        );
+        previewContainer.innerHTML = '';
         const message = chatInput.value;
         chatImage.innerHTML = '';
-        socket.emit('send_message', {
-          to: selectedUser._id,
-          message,
-          image: selectedImageBase64 || null,
-        });
+        if (selectedUser.isGroup) {
+          console.log({ selectedUser });
+          socket.emit('send_group_message', {
+            group: selectedUser.id,
+            message,
+            image: selectedImageBase64 || null,
+          });
+        } else {
+          socket.emit('send_message', {
+            to: selectedUser._id,
+            message,
+            image: selectedImageBase64 || null,
+          });
+        }
 
         const messageDiv = document.createElement('div');
         if (selectedImageBase64) {

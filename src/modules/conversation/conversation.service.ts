@@ -18,13 +18,16 @@ export class ConversationService {
     const newConversation = await this._ConversationRepository.create({ data });
     return newConversation;
   }
-  async getConversationByParticipants(sender: User, receiver: User) {
+  async getConversationByParticipants(users: User[]) {
+    console.log({ users });
     const conversation =
-      await this._ConversationRepository.getConversationByParticipants([
-        sender,
-        receiver,
-      ]);
+      await this._ConversationRepository.getConversationByParticipants(users);
     return conversation;
+  }
+  async getConversationsOfAParticipant(sender: User) {
+    const conversations =
+      await this._ConversationRepository.getConversationsOfAParticipant(sender);
+    return conversations;
   }
   async getConversationById(id: string) {
     const conversation = await this._ConversationRepository.getConversationById(
@@ -38,6 +41,11 @@ export class ConversationService {
       sender,
       receiver,
     ]);
+    return conversation;
+  }
+  async getGroupChat(convId: string) {
+    const conversation =
+      await this._ConversationRepository.getGroupChat(convId);
     return conversation;
   }
 
