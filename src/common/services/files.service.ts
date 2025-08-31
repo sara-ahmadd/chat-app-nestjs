@@ -26,4 +26,8 @@ export class FilesService {
         .end(file.buffer);
     });
   }
+
+  async deleteFile(public_id: string) {
+    return await this.cloudinaryProvider.uploader.destroy(public_id);
+  }
 }

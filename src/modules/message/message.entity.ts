@@ -30,6 +30,9 @@ export class Message {
   @Column({ nullable: true })
   contentImgUrl: string;
 
+  @Column({ nullable: true })
+  contentImgPublicId: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

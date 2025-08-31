@@ -49,6 +49,9 @@ export class ConversationRepository extends AbstractDBRepository<Conversation> {
     const Conversation = await this.repository.findOne({
       where: { id },
       relations,
+      order: {
+        messages: { createdAt: 'ASC' },
+      },
     });
     if (!Conversation) {
       throw new NotFoundException('Conversation not found');
@@ -56,27 +59,7 @@ export class ConversationRepository extends AbstractDBRepository<Conversation> {
 
     return Conversation;
   }
-  /**
-   * Search for a Conversation by participants Ids
-   * @param usersIds
-   * @returns Conversation entity
-   */
-  async getConversationByParticipants(users: User[]) {
-    const usersIds = users.map((user) => user.id);
-    const usersCount = users.length;
-    const conversation = await this.repository
-      .createQueryBuilder('conversation')
-      .innerJoin('conversation.participants', 'participant')
-      .where('participant.id IN (:...usersIds)', { usersIds })
-      .groupBy('conversation.id')
-      .having('COUNT(participant.id) = :usersCount', {
-        usersCount,
-      })
-      .andHaving('COUNT(participant.id) = COUNT(DISTINCT participant.id)') // Ensure no duplicates
-      .getOne();
 
-    return conversation;
-  }
   /**
    * Search for all Conversations of a certain participant
    * @param user
@@ -114,54 +97,55 @@ export class ConversationRepository extends AbstractDBRepository<Conversation> {
     return fullConversation;
   }
 
-  async getWholeChat(users: User[]) {
-    const usersIds = users.map((user) => user.id);
-    const usersCount = users.length;
-    //get the targetted conversation
-    const conversation = await this.repository
-      .createQueryBuilder('conversation')
-      .select(['conversation.id']) //get the id column only from conversation
-      .leftJoin('conversation.participants', 'participant') //join to participants(users table)
-      .where('participant.id IN (:...usersIds)', {
-        usersIds,
-      })
-      .groupBy('conversation.id')
-      // .having('COUNT(participant.id) = :usersCount', { usersCount })
-      .getOne();
-    // get the whole convrsation with messages & participants data
-    const fullConversation = await this.repository.find({
-      where: { id: conversation?.id },
-      relations: {
-        participants: true,
-        messages: {
-          conversation: true,
-          sentBy: true,
-        },
-      },
-      order: {
-        messages: { createdAt: 'ASC' },
-      },
-    });
+  // async getWholeChat(users: User[]) {
+  //   const usersIds = users.map((user) => user.id);
+  //   const usersCount = users.length;
+  //   //get the targetted conversation
+  //   const conversation = await this.repository
+  //     .createQueryBuilder('conversation')
 
-    return fullConversation;
-  }
+  //     .leftJoin('conversation.participants', 'user') //join to participants(users table)
+
+  //     .where('user.id IN (:...usersIds)', {
+  //       usersIds,
+  //     })
+  //     .groupBy('conversation.id')
+  //     .having('COUNT(user .id) = :usersCount', { usersCount })
+  //     .getOne();
+  //   // get the whole convrsation with messages & participants data
+  //   const fullConversation = await this.repository.findOne({
+  //     where: { id: conversation?.id },
+  //     relations: {
+  //       participants: true,
+  //       messages: {
+  //         conversation: true,
+  //         sentBy: true,
+  //       },
+  //     },
+  //     order: {
+  //       messages: { createdAt: 'ASC' },
+  //     },
+  //   });
+  //   console.log({ fullConversation_whole_chat: fullConversation });
+  //   return fullConversation;
+  // }
   // get chat of a group
 
-  async getGroupChat(convId: string) {
-    const conv = await this.repository
-      .createQueryBuilder('conversation')
-      .leftJoin('conversation.messages', 'message')
-      .leftJoin('conversation.participants', 'user')
-      .where('conversation.id = :id', { id: convId })
-      .getOne();
-    const fullConversation = await this.repository.find({
-      where: { id: conv?.id },
-      relations: { participants: true, messages: { sentBy: true } },
-      order: { messages: { createdAt: 'ASC' } },
-    });
-    console.log({ fullConversation });
-    return fullConversation;
-  }
+  // async getGroupChat(convId: string) {
+  //   // const conv = await this.repository
+  //   //   .createQueryBuilder('conversation')
+  //   //   .leftJoin('conversation.messages', 'message')
+  //   //   .leftJoin('conversation.participants', 'user')
+  //   //   .where('conversation.id = :id', { id: convId })
+  //   //   .getOne();
+  //   const fullConversation = await this.repository.findOne({
+  //     where: { id: convId },
+  //     relations: { participants: true, messages: { sentBy: true } },
+  //     order: { messages: { createdAt: 'ASC' } },
+  //   });
+
+  //   return fullConversation;
+  // }
   async updateConversation(
     ConversationId: string,
     updateData: Partial<Conversation>,

@@ -64,4 +64,8 @@ export class MessageRepository extends AbstractDBRepository<Message> {
   async save(Message: Message) {
     return await this.repository.save(Message);
   }
+
+  async deleteMsg(msgId: string) {
+    return await this.repository.delete({ id: msgId });
+  }
 }

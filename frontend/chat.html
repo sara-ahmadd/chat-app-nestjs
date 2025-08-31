@@ -14,7 +14,7 @@
         class="w-1/3 bg-white p-4 overflow-y-auto border-r flex flex-col justify-start items-start gap-4 p-3"
       >
         <div class="mb-4 w-full">
-          <form id="search-form" class="flex gap-2">
+          <form id="search-form" class="flex gap-2 my-5">
             <input
               type="email"
               id="search-email"
@@ -29,6 +29,17 @@
               Search
             </button>
           </form>
+          <div class="flex items-center justify-between w-full mb-4">
+            <h2 class="text-xl font-bold">Groups</h2>
+            <button
+              id="create-group-btn"
+              class="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700"
+              title="Create new group"
+            >
+              ➕
+            </button>
+          </div>
+          <ul id="group-list" class="space-y-2 w-full"></ul>
         </div>
         <h2 class="text-xl font-bold mb-4">Users</h2>
         <ul id="user-list" class="space-y-2 w-full"></ul>
@@ -100,6 +111,50 @@
           </button>
         </form>
       </div>
+
+      <!-- Create Group Modal -->
+      <div
+        id="create-group-modal"
+        class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
+      >
+        <div class="bg-white rounded-lg p-6 w-96 shadow-lg">
+          <h2 class="text-lg font-bold mb-4">Create New Group</h2>
+
+          <label class="block mb-2 text-sm font-medium">Group Title</label>
+          <input
+            type="text"
+            id="group-title-input"
+            placeholder="Enter group title"
+            class="w-full px-3 py-2 border rounded mb-4"
+            required
+          />
+
+          <label class="block mb-2 text-sm font-medium"
+            >Select Participants</label
+          >
+          <div
+            id="participants-list"
+            class="max-h-40 overflow-y-auto border rounded p-2 mb-4 space-y-2"
+          >
+            <!-- JS will populate user checkboxes here -->
+          </div>
+
+          <div class="flex justify-end gap-2">
+            <button
+              id="cancel-group-btn"
+              class="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+            >
+              Cancel
+            </button>
+            <button
+              id="submit-group-btn"
+              class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+            >
+              Create
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script>
@@ -150,6 +205,7 @@
       const chatImage = document.getElementById('chat-image');
 
       let selectedUser = null;
+      let selectedConv = null;
       let selectedImageBase64 = null;
 
       chatImage.addEventListener('change', (e) => {
@@ -163,119 +219,74 @@
         }
       });
 
-      function createUserListItem(user) {
+      function createUserListItem(conv, friend) {
         const li = document.createElement('li');
         li.className =
           'cursor-pointer p-3 rounded hover:bg-gray-100 flex items-center gap-3 border border-gray-200';
 
+        // --- Avatar
         const avatar = document.createElement('img');
         avatar.src =
-          user.avatar ||
+          friend.avatar ||
           'https://res.cloudinary.com/dpiuyacez/image/upload/v1755259108/Screenshot_2025-08-15_145728_d6yoay.png';
         avatar.alt = 'avatar';
         avatar.className = 'w-10 h-10 rounded-full object-cover';
 
+        // --- Info
         const infoDiv = document.createElement('div');
         infoDiv.className = 'flex flex-col';
-        if (user.isGroup) {
-          console.log({ user });
-          const groupName = document.createElement('span');
-          groupName.textContent = user.title || 'Group';
-          groupName.className = 'font-medium';
-          infoDiv.appendChild(groupName);
-        } else {
-          const username = document.createElement('span');
-          username.textContent = user.userName || 'Unnamed';
-          username.className = 'font-medium';
-          infoDiv.appendChild(username);
-        }
+
+        const username = document.createElement('span');
+        username.textContent = friend.userName || 'Unnamed';
+        username.className = 'font-medium';
+        infoDiv.appendChild(username);
 
         const emailSpan = document.createElement('span');
-        emailSpan.textContent = user.email || 'No email';
+        emailSpan.textContent = friend.email || 'No email';
         emailSpan.className = 'text-sm text-gray-600';
+        infoDiv.appendChild(emailSpan);
 
         const status = document.createElement('div');
-        status.id = `status-${user._id}`;
+        status.id = `status-${friend._id}`;
 
-        if (user.isOnline) {
+        if (friend.isOnline) {
           status.innerHTML =
             '<span class="text-green-600 text-sm flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-green-500"></span> Online</span>';
         } else {
-          status.innerHTML = `<span class="text-sm text-gray-500">Last seen at ${user.lastSeenAt || ''}</span>`;
+          status.innerHTML = `<span class="text-sm text-gray-500">Last seen at ${friend.lastSeenAt || ''}</span>`;
         }
-        if (user.isTyping) {
+        if (friend.isTyping) {
           status.innerHTML =
             '<span class="text-green-600 text-sm flex items-center gap-1">Typing....</span>';
         }
 
-        infoDiv.appendChild(emailSpan);
         infoDiv.appendChild(status);
 
         li.appendChild(avatar);
         li.appendChild(infoDiv);
 
+        // --- Click handler
         li.addEventListener('click', () => {
-          selectedUser = user;
-          chatHeader.textContent = `Chat with ${user.userName || user.email}`;
+          selectedUser = friend;
+          selectedConv = conv; // ❗ نخزن الـconversation كمان
+          console.log({ selectedUser, selectedConv });
+
+          chatHeader.textContent = `Chat with ${friend.userName || friend.email}`;
           chatForm.classList.remove('hidden');
           chatBox.innerHTML = '';
-          socket.emit('get_chat', { receiverId: user._id });
-          socket.on('whole_chat', ({ chat }) => {
-            console.log({ chat });
-            if (!chat || !chat.length || !chat[0].messages) return;
 
-            const messages = chat[0].messages;
-            chatBox.innerHTML = ''; // Clear previous messages
+          socket.emit('get_chat', { conversationId: conv.id });
 
-            messages.forEach((msg) => {
-              const messageDiv = document.createElement('div');
-              const senderDiv = document.createElement('div');
-              if (user.isGroup) {
-                senderDiv.innerText = user.userName || user.title;
-                chatBox.appendChild(senderDiv);
-              }
-              // Message content
-              if (msg.contentImgUrl) {
-                const img = document.createElement('img');
-                img.src = msg.contentImgUrl;
-                img.className = 'max-w-xs rounded shadow-md';
-                messageDiv.appendChild(img);
-              }
-
-              if (msg.contentText) {
-                const p = document.createElement('p');
-                p.textContent = msg.contentText;
-                messageDiv.appendChild(p);
-              }
-
-              // Alignment: check if sender is me or not
-              if (msg.sentBy._id === user._id) {
-                messageDiv.className =
-                  'self-start text-left bg-gray-100 p-2 rounded w-fit mr-auto';
-              } else {
-                messageDiv.className =
-                  'self-end text-right bg-blue-100 p-2 rounded w-fit ml-auto';
-              }
-
-              chatBox.appendChild(messageDiv);
-            });
-
-            chatBox.scrollTop = chatBox.scrollHeight;
-          });
-
-          socket.emit('add_friend', { friendId: user._id });
+          // socket.emit('add_friend', { friendId: friend._id });
         });
 
         return li;
       }
+
       function renderSideMenu(conv) {
         const userListContainer = document.getElementById('user-list');
         const groupListContainer = document.getElementById('group-list');
-
-        // Clear old lists
-        userListContainer.innerHTML = '';
-        groupListContainer.innerHTML = '';
-
+        selectedConv = conv;
         // --- Group item ---
         let li = document.createElement('li');
         li.className =
@@ -355,6 +366,7 @@
         // Toggle dropdown on click
         dropdownBtn.addEventListener('click', (e) => {
           e.stopPropagation();
+
           dropdownMenu.classList.toggle('hidden');
         });
 
@@ -371,31 +383,37 @@
           // ignore clicks on dropdown button
           if (e.target === dropdownBtn) return;
 
-          selectedUser = conv;
+          selectedConv = conv;
           chatHeader.textContent = `Group: ${conv.title}`;
           chatForm.classList.remove('hidden');
           chatBox.innerHTML = '';
 
-          socket.emit('get_group_chat', { groupId: conv.id });
+          socket.emit('get_chat', { conversationId: conv.id });
         });
 
         groupListContainer.appendChild(li);
       }
 
-      socket.on('whole_group_chat', ({ chat }) => {
+      socket.on('whole_chat', ({ chat }) => {
         console.log({ chat });
-        if (!chat || !chat.length || !chat[0].messages) return;
-        chatBox.innerHTML = '';
-        chat[0].messages.forEach((msg) => {
+        if (!chat || !chat?.messages) {
+          console.error('no msgssss');
+          return;
+        }
+
+        chatBox.innerHTML = ''; // Clear previous messages
+        chat.messages.forEach((msg) => {
           const messageDiv = document.createElement('div');
 
           // Sender
           const senderDiv = document.createElement('div');
-          senderDiv.innerText = msg.sentBy?.userName || 'Unknown';
-          senderDiv.className = 'text-xs text-gray-500';
+          senderDiv.innerText =
+            msg.sentBy._id === currUser?._id
+              ? 'You'
+              : msg.sentBy?.userName || 'Unknown';
+          senderDiv.className = 'text-lg text-black-500 font-bold';
           messageDiv.appendChild(senderDiv);
 
-          // Content
           if (msg.contentImgUrl) {
             const img = document.createElement('img');
             img.src = msg.contentImgUrl;
@@ -408,8 +426,8 @@
             messageDiv.appendChild(p);
           }
 
-          // Alignment
-          if (msg.sentBy?._id === currUser?._id) {
+          // Align depending on sender
+          if (msg.sentBy._id === currUser?._id) {
             messageDiv.className =
               'self-end text-right bg-blue-100 p-2 rounded w-fit ml-auto';
           } else {
@@ -419,8 +437,10 @@
 
           chatBox.appendChild(messageDiv);
         });
+
         chatBox.scrollTop = chatBox.scrollHeight;
       });
+
       socket.on('user_activity_status', ({ user }) => {
         updateSelectedUserStatus(user);
       });
@@ -464,10 +484,6 @@
           reader.readAsDataURL(file);
         }
       });
-      // ✅ تعديل داخل chatForm.addEventListener لإخفاء المعاينة بعد الإرسال
-      chatInput.value = '';
-      selectedImageBase64 = null;
-      chatImage.value = null;
 
       // إخفاء المعاينة بعد الإرسال
       const previewContainer = document.getElementById(
@@ -478,22 +494,32 @@
       previewContainer.classList.add('hidden');
       const currUser = JSON.parse(`${localStorage.getItem('current_user')}`);
 
-      socket.on('user_list', ({ users }) => {
+      // socket.on('user_list', ({ users }) => {
+      //   userList.innerHTML = '';
+      //   users.forEach((user) => {
+      //     const li = createUserListItem(user);
+      //     li.id = user._id;
+      //     userList.appendChild(li);
+      //   });
+      // });
+      socket.on('get_my_chats', ({ conversations }) => {
         userList.innerHTML = '';
-        users.forEach((user) => {
-          const li = createUserListItem(user);
-          li.id = user._id;
-          userList.appendChild(li);
-        });
-      });
-      socket.on('get_my_groups', ({ conversations }) => {
-        conversations.forEach((conv) => {
-          if (conv.isGroup) {
+        conversations?.forEach((conv) => {
+          console.log({ conv });
+          if (conv?.isGroup) {
             renderSideMenu(conv);
-            console.log({ conv });
+          } else {
+            const friend = conv.participants.find(
+              (p) => p._id !== currUser?._id,
+            );
+            if (!friend) return;
+            const li = createUserListItem(conv, friend);
+            li.id = conv.id;
+            userList.appendChild(li);
           }
         });
       });
+
       const searchForm = document.getElementById('search-form');
       const searchInput = document.getElementById('search-email');
 
@@ -561,7 +587,7 @@
           messageDiv.appendChild(p);
         }
 
-        if (data.from === selectedUser._id) {
+        if (data.from === selectedUser?._id) {
           messageDiv.className = 'text-left bg-gray-100 p-2 rounded w-fit';
         } else {
           messageDiv.className =
@@ -574,27 +600,20 @@
 
       chatForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        if (!selectedUser) return;
+        if (!selectedConv) return;
         const previewContainer = document.getElementById(
           'image-preview-container',
         );
         previewContainer.innerHTML = '';
         const message = chatInput.value;
         chatImage.innerHTML = '';
-        if (selectedUser.isGroup) {
-          console.log({ selectedUser });
-          socket.emit('send_group_message', {
-            group: selectedUser.id,
-            message,
-            image: selectedImageBase64 || null,
-          });
-        } else {
-          socket.emit('send_message', {
-            to: selectedUser._id,
-            message,
-            image: selectedImageBase64 || null,
-          });
-        }
+
+        console.log({ selectedConv });
+        socket.emit('send_message', {
+          conversationId: selectedConv.id,
+          message,
+          image: selectedImageBase64 || null,
+        });
 
         const messageDiv = document.createElement('div');
         if (selectedImageBase64) {
@@ -619,6 +638,91 @@
         chatInput.value = '';
         selectedImageBase64 = null;
         chatImage.value = null;
+      });
+      // ---- CREATE GROUP LOGIC ----
+      const createGroupBtn = document.getElementById('create-group-btn');
+      const createGroupModal = document.getElementById('create-group-modal');
+      const cancelGroupBtn = document.getElementById('cancel-group-btn');
+      const submitGroupBtn = document.getElementById('submit-group-btn');
+      const participantsList = document.getElementById('participants-list');
+      const groupTitleInput = document.getElementById('group-title-input');
+
+      let allUsers = [];
+
+      // open modal
+      createGroupBtn.addEventListener('click', () => {
+        createGroupModal.classList.remove('hidden');
+        populateParticipantsList();
+      });
+
+      // close modal
+      cancelGroupBtn.addEventListener('click', () => {
+        createGroupModal.classList.add('hidden');
+      });
+
+      // fill participants list with checkboxes
+      function populateParticipantsList() {
+        participantsList.innerHTML = '';
+        allUsers.forEach((user) => {
+          if (user._id === currUser._id) return; // skip self
+
+          const div = document.createElement('div');
+          div.className = 'flex items-center gap-2';
+
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.value = user.email;
+          checkbox.id = `user-${user._id}`;
+
+          const label = document.createElement('label');
+          label.setAttribute('for', `user-${user._id}`);
+          label.textContent = user.userName || user.email;
+
+          div.appendChild(checkbox);
+          div.appendChild(label);
+          participantsList.appendChild(div);
+        });
+      }
+
+      // submit group creation
+      submitGroupBtn.addEventListener('click', async () => {
+        const title = groupTitleInput.value.trim();
+        const selected = [
+          ...participantsList.querySelectorAll(
+            'input[type="checkbox"]:checked',
+          ),
+        ].map((cb) => cb.value);
+
+        if (!title || selected.length === 0) {
+          alert('Please enter a title and select at least one participant.');
+          return;
+        }
+
+        try {
+          const res = await fetch(
+            'http://localhost:8000/conversation/create_group',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({ title, users: selected }),
+            },
+          );
+
+          const data = await res.json();
+          if (!res.status == 201)
+            throw new Error(data.message || 'Failed to create group');
+
+          // success: close modal and add to UI
+          createGroupModal.classList.add('hidden');
+          groupTitleInput.value = '';
+          renderSideMenu(data.conversation);
+        } catch (err) {
+          console.error(err);
+          alert('Error creating group');
+        }
       });
     </script>
   </body>
