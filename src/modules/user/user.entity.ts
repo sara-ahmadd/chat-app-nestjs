@@ -1,3 +1,4 @@
+import { Message } from '../message/message.entity';
 import { Gender } from './../../common/types/genderEnum';
 import { Roles } from './../../common/types/userRolesEnum';
 import { hashText } from './../../utils/hashing/hashText';
@@ -6,8 +7,10 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   JoinTable,
   ManyToMany,
+  OneToOne,
   PrimaryGeneratedColumn,
   Unique,
   UpdateDateColumn,
@@ -84,6 +87,10 @@ export class User {
 
   @Column({ default: false })
   isTyping: boolean;
+
+  @OneToOne(() => Message, { nullable: true })
+  @JoinColumn()
+  lastReadMsg: null;
 
   @Column({ type: Date, default: () => 'CURRENT_TIMESTAMP' })
   lastSeenAt: Date;
