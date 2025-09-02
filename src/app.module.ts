@@ -1,21 +1,18 @@
+import { MailerModule } from '@nestjs-modules/mailer';
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { MessageModule } from './modules/message/message.module';
-import { AuthModule } from './modules/auth/auth.module';
-import { User } from './modules/user/user.entity';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { JwtModule } from '@nestjs/jwt';
-import { MailerModule } from '@nestjs-modules/mailer';
-import { CacheModule } from '@nestjs/cache-manager';
-import { AuthGuard } from './common/guards/auth.guard';
-import { SocketModule } from './socket/socket.module';
-import { MulterModule } from '@nestjs/platform-express';
 import { CloudinaryModule } from './common/providers/cloudinary.module';
-import { ConversationModule } from './modules/conversation/conversation.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { ConversationMetaDataModule } from './modules/conversation-meta-data/conversation-meta-data.module';
 import { Conversation } from './modules/conversation/conversation.entity';
+import { ConversationModule } from './modules/conversation/conversation.module';
 import { Message } from './modules/message/message.entity';
+import { MessageModule } from './modules/message/message.module';
+import { User } from './modules/user/user.entity';
+import { SocketModule } from './socket/socket.module';
 
 @Module({
   imports: [
@@ -62,6 +59,7 @@ import { Message } from './modules/message/message.entity';
     SocketModule,
     AuthModule,
     ConversationModule,
+    ConversationMetaDataModule,
   ],
   controllers: [AppController],
   providers: [AppService],

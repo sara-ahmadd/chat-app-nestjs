@@ -1,3 +1,4 @@
+import { ConversationMetaData } from '../conversation-meta-data/conversation-meta-data.entity';
 import { Message } from '../message/message.entity';
 import { Gender } from './../../common/types/genderEnum';
 import { Roles } from './../../common/types/userRolesEnum';
@@ -10,6 +11,8 @@ import {
   JoinColumn,
   JoinTable,
   ManyToMany,
+  ManyToOne,
+  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
   Unique,
@@ -88,9 +91,11 @@ export class User {
   @Column({ default: false })
   isTyping: boolean;
 
-  @OneToOne(() => Message, { nullable: true })
-  @JoinColumn()
-  lastReadMsg: null;
+  @OneToMany(
+    () => ConversationMetaData,
+    (conversationMetaData) => conversationMetaData.user,
+  )
+  conversationMetaData: ConversationMetaData;
 
   @Column({ type: Date, default: () => 'CURRENT_TIMESTAMP' })
   lastSeenAt: Date;

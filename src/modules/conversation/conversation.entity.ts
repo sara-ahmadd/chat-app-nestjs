@@ -6,12 +6,14 @@ import {
   Entity,
   JoinTable,
   ManyToMany,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Message } from '../message/message.entity';
 import { User } from '../user/user.entity';
+import { ConversationMetaData } from '../conversation-meta-data/conversation-meta-data.entity';
 
 @Entity()
 export class Conversation {
@@ -30,6 +32,12 @@ export class Conversation {
 
   @Column({ default: false })
   isGroup: boolean;
+
+  @OneToMany(
+    () => ConversationMetaData,
+    (conversationMetaData) => conversationMetaData.conversation,
+  )
+  conversationMetaData: ConversationMetaData;
 
   @Column({ nullable: true })
   title: string;

@@ -156,6 +156,10 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.emit('whole_chat', { chat });
   }
 
+  //update last read message by a user in a conversation
+  @SubscribeMessage('last_read_msg')
+  async updateLastReadMsg() {}
+
   async handleDisconnect(client: Socket) {
     // console.log('Disconnected client has no user data', client.data.user.email);
 
