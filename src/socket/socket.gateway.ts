@@ -10,6 +10,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { FilesService } from 'src/common/services/files.service';
 import { JWTFunctions } from 'src/common/services/jwt-service.service';
+import { ConversationMetaDataService } from 'src/modules/conversation-meta-data/conversation-meta-data.service';
 import { ConversationService } from 'src/modules/conversation/conversation.service';
 import { Message } from 'src/modules/message/message.entity';
 import { MessageService } from 'src/modules/message/message.service';
@@ -24,6 +25,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly _JWTFunctions: JWTFunctions,
     private readonly _UserService: UserService,
     private readonly _ConversationService: ConversationService,
+    private readonly _ConversationMetaDataService: ConversationMetaDataService,
     private readonly _MessageService: MessageService,
     private readonly filesService: FilesService,
     private readonly _ConfigService: ConfigService,
@@ -157,8 +159,35 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   //update last read message by a user in a conversation
-  @SubscribeMessage('last_read_msg')
-  async updateLastReadMsg() {}
+  @SubscribeMessage('update_last_read_msg')
+  async updateLastReadMsg(
+    client: Socket,
+    data: { messageId: string; convId: string },
+  ) {
+    const msg = await this._MessageService.getMsgById(data.messageId);
+
+    console.log({ user: client.data.user._id });
+
+    const conv = await this._ConversationService.getConversationById(
+      data.convId,
+    );
+    await this._ConversationMetaDataService.updateLastReadMsg(
+      client.data.user,
+      conv,
+      msg,
+    );
+  }
+
+  //get unread messages count by a user in a conversation
+  @SubscribeMessage('unread_count')
+  async unreadCount(client: Socket, data: { convId: string }) {
+    const userId = client.data.user._id;
+    const msgsCount = await this._ConversationMetaDataService.getUnReadMsgs(
+      userId,
+      data.convId,
+    );
+    client.emit('unread_msgs_count', { convId: data.convId, msgsCount });
+  }
 
   async handleDisconnect(client: Socket) {
     // console.log('Disconnected client has no user data', client.data.user.email);
@@ -186,7 +215,6 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     message: string,
     image?: string,
   ) {
-    // console.log({ sender: users[0].id, receiver: users[1].id });
     //find conversation by id
     const conversation =
       await this._ConversationService.getConversationById(conversationId);
@@ -213,7 +241,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
         conversation,
       });
 
-      return;
+      return newMessage;
     } else {
       //if not found create one
       const newConversation =
@@ -227,6 +255,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
         contentImgPublicId: image ? newImg?.public_id : undefined,
         conversation: newConversation,
       });
+      return newMessage;
     }
   }
 }

@@ -43,7 +43,6 @@
         </div>
         <h2 class="text-xl font-bold mb-4">Users</h2>
         <ul id="user-list" class="space-y-2 w-full"></ul>
-        <ul id="group-list" class="space-y-2 w-full"></ul>
       </div>
 
       <!-- Chat area -->
@@ -79,9 +78,7 @@
         ></div>
 
         <!-- Chat form -->
-
         <form id="chat-form" class="mt-4 hidden flex gap-2 items-center">
-          <!-- ✅ تمت إضافته أسفل الفورم مباشرة لعرض معاينة الصورة -->
           <div
             id="image-preview-container"
             class="mt-2 hidden bg-white border border-gray-300 rounded p-2 w-fit"
@@ -111,50 +108,6 @@
           </button>
         </form>
       </div>
-
-      <!-- Create Group Modal -->
-      <div
-        id="create-group-modal"
-        class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
-      >
-        <div class="bg-white rounded-lg p-6 w-96 shadow-lg">
-          <h2 class="text-lg font-bold mb-4">Create New Group</h2>
-
-          <label class="block mb-2 text-sm font-medium">Group Title</label>
-          <input
-            type="text"
-            id="group-title-input"
-            placeholder="Enter group title"
-            class="w-full px-3 py-2 border rounded mb-4"
-            required
-          />
-
-          <label class="block mb-2 text-sm font-medium"
-            >Select Participants</label
-          >
-          <div
-            id="participants-list"
-            class="max-h-40 overflow-y-auto border rounded p-2 mb-4 space-y-2"
-          >
-            <!-- JS will populate user checkboxes here -->
-          </div>
-
-          <div class="flex justify-end gap-2">
-            <button
-              id="cancel-group-btn"
-              class="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
-            >
-              Cancel
-            </button>
-            <button
-              id="submit-group-btn"
-              class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-            >
-              Create
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
 
     <script>
@@ -172,6 +125,8 @@
         },
       });
 
+      // 🟢 Store unread counts
+      const unreadMap = {};
       socket.on('token_error', (data) => {
         console.log({ data });
       });
@@ -221,6 +176,7 @@
 
       function createUserListItem(conv, friend) {
         const li = document.createElement('li');
+        li.id = `li-${conv.id}`;
         li.className =
           'cursor-pointer p-3 rounded hover:bg-gray-100 flex items-center gap-3 border border-gray-200';
 
@@ -270,7 +226,18 @@
           selectedUser = friend;
           selectedConv = conv; // ❗ نخزن الـconversation كمان
           console.log({ selectedUser, selectedConv });
-
+          // 🟢 Store unread counts
+          const unreadMap = {};
+          socket.emit('unread_count', { convId: selectedConv.id });
+          // 🟢 Listen for unread_count event
+          socket.on('unread_msgs_count', ({ convId, msgsCount }) => {
+            unreadMap[convId] = msgsCount;
+            const badge = document.querySelector(`#badge-${convId}`);
+            if (badge) {
+              badge.textContent = msgsCount > 0 ? msgsCount : '';
+              badge.classList.toggle('hidden', msgsCount === 0);
+            }
+          });
           chatHeader.textContent = `Chat with ${friend.userName || friend.email}`;
           chatForm.classList.remove('hidden');
           chatBox.innerHTML = '';
@@ -279,7 +246,25 @@
 
           // socket.emit('add_friend', { friendId: friend._id });
         });
+        // 🟢 Unread badge
+        const badge = document.createElement('span');
+        badge.id = `badge-${conv.id}`;
+        badge.className =
+          'ml-2 text-xs font-bold bg-red-500 text-white rounded-full px-2 hidden';
+        badge.textContent = unreadMap[conv.id] || '';
 
+        li.appendChild(badge);
+
+        // --- Click handler
+        li.addEventListener('click', () => {
+          selectedUser = friend;
+          selectedConv = conv;
+          chatHeader.textContent = `Chat with ${friend.userName || friend.email}`;
+          chatForm.classList.remove('hidden');
+          chatBox.innerHTML = '';
+
+          socket.emit('get_chat', { conversationId: conv.id });
+        });
         return li;
       }
 
@@ -384,6 +369,18 @@
           if (e.target === dropdownBtn) return;
 
           selectedConv = conv;
+
+          socket.emit('unread_count', { convId: selectedConv.id });
+          // 🟢 Listen for unread_count event
+          socket.on('unread_msgs_count', ({ convId, msgsCount }) => {
+            unreadMap[convId] = msgsCount;
+            const badge = document.querySelector(`#badge-${convId}`);
+            if (badge) {
+              badge.textContent = msgsCount > 0 ? msgsCount : '';
+              badge.classList.toggle('hidden', msgsCount === 0);
+            }
+          });
+
           chatHeader.textContent = `Group: ${conv.title}`;
           chatForm.classList.remove('hidden');
           chatBox.innerHTML = '';
@@ -401,6 +398,13 @@
           return;
         }
 
+        // 🟢 Mark as read
+        socket.emit('update_last_read_msg', {
+          convId: chat.id,
+          messageId: chat?.messages[chat.messages.length - 1].id || 'Empty',
+        });
+        const badge = document.getElementById(`badge-${chat.id}`);
+        if (badge) badge.classList.add('hidden');
         chatBox.innerHTML = ''; // Clear previous messages
         chat.messages.forEach((msg) => {
           const messageDiv = document.createElement('div');
@@ -573,7 +577,14 @@
 
       socket.on('receive_message', (data) => {
         const messageDiv = document.createElement('div');
-
+        // 🟢 Unread badge
+        const badge = document.createElement('span');
+        badge.id = `badge-${data.id}`;
+        badge.className =
+          'ml-2 text-xs font-bold bg-red-500 text-white rounded-full px-2 hidden';
+        badge.textContent = unreadMap[data.id] || '';
+        const li = document.querySelector(`#li-${data.id}`);
+        li.appendChild(badge);
         if (data.image) {
           const img = document.createElement('img');
           img.src = data.image;

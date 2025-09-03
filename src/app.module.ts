@@ -13,6 +13,7 @@ import { Message } from './modules/message/message.entity';
 import { MessageModule } from './modules/message/message.module';
 import { User } from './modules/user/user.entity';
 import { SocketModule } from './socket/socket.module';
+import { ConversationMetaData } from './modules/conversation-meta-data/conversation-meta-data.entity';
 
 @Module({
   imports: [
@@ -46,7 +47,7 @@ import { SocketModule } from './socket/socket.module';
           username: configService.get<string>('DB_USERNAME'),
           password: configService.get<string>('DB_PASSWORD'),
           database: configService.get<string>('DB_NAME'),
-          entities: [User, Conversation, Message],
+          entities: [User, Conversation, Message, ConversationMetaData],
           synchronize: false,
         };
       },

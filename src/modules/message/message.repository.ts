@@ -1,5 +1,10 @@
 import { AbstractDBRepository } from 'src/DB/db.repository';
-import { FindOptionsRelations, FindOptionsSelect, Repository } from 'typeorm';
+import {
+  FindOptionsRelations,
+  FindOptionsSelect,
+  MoreThan,
+  Repository,
+} from 'typeorm';
 
 import { InjectRepository } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
@@ -32,15 +37,15 @@ export class MessageRepository extends AbstractDBRepository<Message> {
     id: string,
     relations?: FindOptionsRelations<Message> | undefined,
   ) {
-    const Message = await this.repository.findOne({
+    const message = await this.repository.findOne({
       where: { id },
       relations,
     });
-    if (!Message) {
-      throw new NotFoundException('Message not found');
+    if (!message) {
+      throw new NotFoundException('message not found');
     }
 
-    return Message;
+    return message;
   }
 
   async updateMessage(
@@ -67,5 +72,17 @@ export class MessageRepository extends AbstractDBRepository<Message> {
 
   async deleteMsg(msgId: string) {
     return await this.repository.delete({ id: msgId });
+  }
+
+  //get all messages in this conversation which their date/time is after time of laste read msg
+  async getUnReadMsgs(convId: string, lastRead: Date) {
+    const msgs = await this.repository.find({
+      where: {
+        conversation: { id: convId },
+        createdAt: MoreThan(lastRead),
+      },
+      order: { createdAt: 'ASC' },
+    });
+    return msgs;
   }
 }

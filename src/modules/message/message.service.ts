@@ -79,4 +79,11 @@ export class MessageService {
     await this._MessageRepository.updateMessage(msgId, data);
     return { message: 'image is updated successfully' };
   }
+
+  async getMsgById(messageId: string) {
+    return this._MessageRepository.getMessageById(messageId, {
+      sentBy: true,
+      conversation: true,
+    });
+  }
 }

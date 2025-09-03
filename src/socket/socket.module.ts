@@ -4,9 +4,16 @@ import { UserModule } from 'src/modules/user/user.module';
 import { AuthModule } from 'src/modules/auth/auth.module';
 import { ConversationModule } from 'src/modules/conversation/conversation.module';
 import { MessageModule } from 'src/modules/message/message.module';
+import { ConversationMetaDataModule } from 'src/modules/conversation-meta-data/conversation-meta-data.module';
 
 @Module({
-  imports: [UserModule, AuthModule, ConversationModule, MessageModule],
+  imports: [
+    UserModule,
+    AuthModule,
+    ConversationModule,
+    MessageModule,
+    ConversationMetaDataModule,
+  ],
   providers: [SocketGateway],
   exports: [SocketGateway],
 })

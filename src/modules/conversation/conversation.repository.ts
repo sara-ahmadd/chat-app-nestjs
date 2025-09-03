@@ -97,55 +97,6 @@ export class ConversationRepository extends AbstractDBRepository<Conversation> {
     return fullConversation;
   }
 
-  // async getWholeChat(users: User[]) {
-  //   const usersIds = users.map((user) => user.id);
-  //   const usersCount = users.length;
-  //   //get the targetted conversation
-  //   const conversation = await this.repository
-  //     .createQueryBuilder('conversation')
-
-  //     .leftJoin('conversation.participants', 'user') //join to participants(users table)
-
-  //     .where('user.id IN (:...usersIds)', {
-  //       usersIds,
-  //     })
-  //     .groupBy('conversation.id')
-  //     .having('COUNT(user .id) = :usersCount', { usersCount })
-  //     .getOne();
-  //   // get the whole convrsation with messages & participants data
-  //   const fullConversation = await this.repository.findOne({
-  //     where: { id: conversation?.id },
-  //     relations: {
-  //       participants: true,
-  //       messages: {
-  //         conversation: true,
-  //         sentBy: true,
-  //       },
-  //     },
-  //     order: {
-  //       messages: { createdAt: 'ASC' },
-  //     },
-  //   });
-  //   console.log({ fullConversation_whole_chat: fullConversation });
-  //   return fullConversation;
-  // }
-  // get chat of a group
-
-  // async getGroupChat(convId: string) {
-  //   // const conv = await this.repository
-  //   //   .createQueryBuilder('conversation')
-  //   //   .leftJoin('conversation.messages', 'message')
-  //   //   .leftJoin('conversation.participants', 'user')
-  //   //   .where('conversation.id = :id', { id: convId })
-  //   //   .getOne();
-  //   const fullConversation = await this.repository.findOne({
-  //     where: { id: convId },
-  //     relations: { participants: true, messages: { sentBy: true } },
-  //     order: { messages: { createdAt: 'ASC' } },
-  //   });
-
-  //   return fullConversation;
-  // }
   async updateConversation(
     ConversationId: string,
     updateData: Partial<Conversation>,
@@ -164,6 +115,7 @@ export class ConversationRepository extends AbstractDBRepository<Conversation> {
     return Conversation;
   }
 
+  // save updated conversation
   async save(Conversation: Conversation) {
     return await this.repository.save(Conversation);
   }

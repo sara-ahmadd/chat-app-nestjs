@@ -35,9 +35,9 @@ export class Conversation {
 
   @OneToMany(
     () => ConversationMetaData,
-    (conversationMetaData) => conversationMetaData.conversation,
+    (convMetaData) => convMetaData.conversation,
   )
-  conversationMetaData: ConversationMetaData;
+  conversationMetaData: ConversationMetaData[];
 
   @Column({ nullable: true })
   title: string;

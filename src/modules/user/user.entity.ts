@@ -95,7 +95,7 @@ export class User {
     () => ConversationMetaData,
     (conversationMetaData) => conversationMetaData.user,
   )
-  conversationMetaData: ConversationMetaData;
+  conversationMetaData: ConversationMetaData[];
 
   @Column({ type: Date, default: () => 'CURRENT_TIMESTAMP' })
   lastSeenAt: Date;
