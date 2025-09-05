@@ -1,6 +1,6 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { FilesService } from 'src/common/services/files.service';
+import { FilesService } from './../../common/services/files.service';
 import { AuthModule } from '../auth/auth.module';
 import { ConversationMetaDataModule } from '../conversation-meta-data/conversation-meta-data.module';
 import { ConversationModule } from '../conversation/conversation.module';

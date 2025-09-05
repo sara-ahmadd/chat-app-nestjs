@@ -1,4 +1,4 @@
-import { AbstractDBRepository } from 'src/DB/db.repository';
+import { AbstractDBRepository } from './../../DB/db.repository';
 import {
   FindOptionsRelations,
   FindOptionsSelect,

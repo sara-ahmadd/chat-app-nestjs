@@ -8,16 +8,15 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { FilesService } from 'src/common/services/files.service';
-import { JWTFunctions } from 'src/common/services/jwt-service.service';
-import { ConversationMetaDataService } from 'src/modules/conversation-meta-data/conversation-meta-data.service';
-import { ConversationService } from 'src/modules/conversation/conversation.service';
-import { Message } from 'src/modules/message/message.entity';
-import { MessageService } from 'src/modules/message/message.service';
-import { User } from 'src/modules/user/user.entity';
-import { UserService } from 'src/modules/user/user.service';
-import { base64ToMulterFile } from 'src/utils/helpers/base64ToFile';
-import { encryptEmojieText } from 'src/utils/helpers/encryptEmojiesText';
+import { FilesService } from './../common/services/files.service';
+import { JWTFunctions } from './../common/services/jwt-service.service';
+import { ConversationMetaDataService } from './../modules/conversation-meta-data/conversation-meta-data.service';
+import { ConversationService } from './../modules/conversation/conversation.service';
+import { Message } from './../modules/message/message.entity';
+import { MessageService } from './../modules/message/message.service';
+import { User } from './../modules/user/user.entity';
+import { UserService } from './../modules/user/user.service';
+import { base64ToMulterFile } from './../utils/helpers/base64ToFile';
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {

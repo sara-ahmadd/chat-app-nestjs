@@ -1,9 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { Roles } from 'src/common/types/userRolesEnum';
+import { Roles } from './../../common/types/userRolesEnum';
 import { Message } from './message.entity';
 import { MessageRepository } from './message.repository';
 import { UserService } from '../user/user.service';
-import { FilesService } from 'src/common/services/files.service';
+import { FilesService } from './../../common/services/files.service';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()

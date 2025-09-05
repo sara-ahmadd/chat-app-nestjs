@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
-import { User } from 'src/common/decorators/user.decorator';
+import { User } from './../../common/decorators/user.decorator';
 import { ConversationService } from './conversation.service';
 import { AddParticipantsToGroupDto } from './dtos/add-participants.dto';
 import { CreateGroupDto } from './dtos/create-group.dto';

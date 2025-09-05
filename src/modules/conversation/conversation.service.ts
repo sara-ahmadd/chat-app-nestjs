@@ -8,7 +8,7 @@ import { User } from '../user/user.entity';
 import { UserService } from '../user/user.service';
 import { Conversation } from './conversation.entity';
 import { ConversationRepository } from './conversation.repository';
-import { Roles } from 'src/common/types/userRolesEnum';
+import { Roles } from './../../common/types/userRolesEnum';
 
 @Injectable()
 export class ConversationService {

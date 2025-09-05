@@ -4,7 +4,7 @@ import { CreateUserDto } from '../user/dtos/create-user.dto';
 import { VerifyAccountDto } from '../user/dtos/verify-account.dto';
 import { GenerateOtpDto } from '../user/dtos/generate-otp.dto';
 import { LoginDto } from './dtos/login.dto';
-import { Public } from 'src/common/decorators/public.decorator';
+import { Public } from './../../common/decorators/public.decorator';
 
 @Public()
 @Controller('auth')

@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Patch } from '@nestjs/common';
 import { ConversationMetaDataService } from './conversation-meta-data.service';
-import { User } from 'src/common/decorators/user.decorator';
+import { User } from './../../common/decorators/user.decorator';
 
 @Controller('conversation-meta-data')
 export class ConversationMetaDataController {

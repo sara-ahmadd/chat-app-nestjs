@@ -1,16 +1,10 @@
-import { AbstractDBRepository } from 'src/DB/db.repository';
-import {
-  FindOptionsRelations,
-  FindOptionsSelect,
-  In,
-  Repository,
-} from 'typeorm';
+import { FindOptionsRelations, In, Repository } from 'typeorm';
+import { AbstractDBRepository } from './../../DB/db.repository';
 
-import { InjectRepository } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
-import { Conversation } from './conversation.entity';
+import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../user/user.entity';
-import { decryptEmojieText } from 'src/utils/helpers/encryptEmojiesText';
+import { Conversation } from './conversation.entity';
 
 export class ConversationRepository extends AbstractDBRepository<Conversation> {
   constructor(

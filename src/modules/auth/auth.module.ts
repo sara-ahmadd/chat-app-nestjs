@@ -6,9 +6,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { CACHE_MANAGER, CacheModule } from '@nestjs/cache-manager';
 import { APP_GUARD } from '@nestjs/core';
-import { AuthGuard } from 'src/common/guards/auth.guard';
-import { JWTFunctions } from 'src/common/services/jwt-service.service';
-import { MailerEmailService } from 'src/common/services/mailer.service';
+import { AuthGuard } from './../../common/guards/auth.guard';
+import { JWTFunctions } from './../../common/services/jwt-service.service';
+import { MailerEmailService } from './../../common/services/mailer.service';
 
 @Module({
   imports: [

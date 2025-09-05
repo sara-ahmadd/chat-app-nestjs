@@ -7,7 +7,7 @@ import {
   IsString,
   ValidateIf,
 } from 'class-validator';
-import { Gender } from 'src/common/types/genderEnum';
+import { Gender } from './../../../common/types/genderEnum';
 
 export class CreateUserDto {
   @IsString()

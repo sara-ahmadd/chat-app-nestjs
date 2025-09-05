@@ -1,13 +1,13 @@
-import { AbstractDBRepository } from 'src/DB/db.repository';
-import { FindOptionsRelations, In, Repository } from 'typeorm';
+import { AbstractDBRepository } from './../../DB/db.repository';
+import { Repository } from 'typeorm';
 
 import { NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from '../user/user.entity';
-import { ConversationMetaData } from './conversation-meta-data.entity';
+import { Conversation } from '../conversation/conversation.entity';
 import { Message } from '../message/message.entity';
 import { MessageRepository } from '../message/message.repository';
-import { Conversation } from '../conversation/conversation.entity';
+import { User } from '../user/user.entity';
+import { ConversationMetaData } from './conversation-meta-data.entity';
 
 export class ConversationMetaDataRepository extends AbstractDBRepository<ConversationMetaData> {
   constructor(
