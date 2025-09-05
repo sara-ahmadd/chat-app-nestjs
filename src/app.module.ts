@@ -49,7 +49,7 @@ import { ConversationMetaData } from './modules/conversation-meta-data/conversat
           password: configService.get<string>('DB_PASSWORD'),
           database: configService.get<string>('DB_NAME'),
           entities: [User, Conversation, Message, ConversationMetaData],
-          synchronize: false,
+          synchronize: true,
         };
       },
 
