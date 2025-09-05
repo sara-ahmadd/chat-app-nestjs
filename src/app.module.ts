@@ -54,7 +54,11 @@ import { ConversationMetaData } from './modules/conversation-meta-data/conversat
 
       inject: [ConfigService],
     }),
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath:
+        process.env.NODE_ENV === 'production' ? '.env.docker' : '.env',
+    }),
 
     MessageModule,
     SocketModule,
