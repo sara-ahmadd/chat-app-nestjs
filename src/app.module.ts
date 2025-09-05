@@ -36,12 +36,13 @@ import { ConversationMetaData } from './modules/conversation-meta-data/conversat
     TypeOrmModule.forRootAsync({
       useFactory: async (configService: ConfigService) => {
         return {
-          type: configService.get('DB_TYPE') as
-            | 'mysql'
-            | 'postgres'
-            | 'sqlite'
-            | 'mariadb'
-            | 'mongodb',
+          type:
+            (configService.get('DB_TYPE') as
+              | 'mysql'
+              | 'postgres'
+              | 'sqlite'
+              | 'mariadb'
+              | 'mongodb') || 'mysql',
           host: configService.get<string>('DB_HOST'),
           port: Number(configService.get<string>('DB_PORT')),
           username: configService.get<string>('DB_USERNAME'),
