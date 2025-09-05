@@ -1,7 +1,6 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtService, JwtVerifyOptions } from '@nestjs/jwt';
-import { UserService } from 'src/modules/user/user.service';
+import { JwtService } from '@nestjs/jwt';
 @Injectable()
 export class JWTFunctions {
   constructor(
