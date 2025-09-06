@@ -39,11 +39,14 @@ export class AuthService {
     const otp = generate(10);
     // set otp in cache manager, that expires after 5 minutes
     await this.cacheManager.set(`${email}-otp`, otp, 600000); //300000 ms
-
+    console.log({ otp });
     await this.MailerEmailService.sendEmail({
       email: email,
       subject: 'Verify your account',
       html: verifyAccount(otp),
+    });
+    console.log({
+      message: 'otp is sent to your email',
     });
     return {
       message: 'otp is sent to your email',

@@ -120,10 +120,16 @@ export class ConversationService {
     }
   }
 
-  async deleteConversation(convId: string) {}
+  async deleteConversation(convId: string) {
+    const conversation = await this.getConversationById(convId);
+    if (!conversation) {
+      throw new NotFoundException('conversation is not found!');
+    }
+    await this._ConversationRepository.deleteConv(conversation);
+  }
 
   /**
-   * admin remove a member from a chat group or the user exits the group
+   * admin remove a member from a chat (group) or the user exits a conversation
    * @param convId Conversation Id
    * @param user_Id Target user _id (the user to be removed from the chat group)
    * @param currentUserId
@@ -144,11 +150,19 @@ export class ConversationService {
       conversation.participants?.map((p) => p._id).includes(currentUser._id)
     ) {
       this.deleteMemberFromConversation(userData._id, conversation);
+
+      if (!conversation.participants?.length) {
+        await this.deleteConversation(convId);
+      }
       return {
         message: `${userData.userName} is removed by admin ${currentUser.userName}`,
       };
     } else if (currentUser._id.toString() === userData._id.toString()) {
       this.deleteMemberFromConversation(userData._id, conversation);
+
+      if (!conversation.participants?.length) {
+        await this.deleteConversation(convId);
+      }
       return {
         message: `${userData.userName} Exited the group`,
       };

@@ -60,7 +60,6 @@ export class ConversationRepository extends AbstractDBRepository<Conversation> {
    * @returns Conversation entity
    */
   async getConversationsOfAParticipant(user: User) {
-    // const usersIds = users.map((user) => user.id);
     //get the targetted conversation
     const conversations = await this.repository
       .createQueryBuilder('conversation')
@@ -109,8 +108,13 @@ export class ConversationRepository extends AbstractDBRepository<Conversation> {
     return Conversation;
   }
 
-  // save updated conversation
-  async save(Conversation: Conversation) {
-    return await this.repository.save(Conversation);
+  // save  conversation
+  async save(conversation: Conversation) {
+    return await this.repository.save(conversation);
+  }
+
+  //delete conversation
+  async deleteConv(conversation: Conversation) {
+    return await this.repository.delete({ id: conversation.id });
   }
 }
