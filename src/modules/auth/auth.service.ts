@@ -112,7 +112,7 @@ export class AuthService {
 
     user.password = await hashText(body.password);
     user.changeCredentials = new Date();
-
+    console.log({ newPass: body.password });
     await this._UserService.saveUser(user);
 
     return {
