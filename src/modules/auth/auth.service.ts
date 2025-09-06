@@ -10,11 +10,12 @@ import { Cache } from 'cache-manager';
 import { generate } from 'otp-generator';
 import { JWTFunctions } from './../../common/services/jwt-service.service';
 import { MailerEmailService } from './../../common/services/mailer.service';
-import { compareHash } from './../../utils/hashing/hashText';
+import { compareHash, hashText } from './../../utils/hashing/hashText';
 import { verifyAccount } from './../../utils/html-templates/verifyAccount';
 import { CreateUserDto } from '../user/dtos/create-user.dto';
 import { UserService } from '../user/user.service';
 import { LoginDto } from './dtos/login.dto';
+import { ForgotPasswordDto, ResetPasswordDto } from './dtos/resetPassword.dto';
 
 @Injectable()
 export class AuthService {
@@ -38,7 +39,7 @@ export class AuthService {
   async sendOtp(email: string) {
     const otp = generate(10);
     // set otp in cache manager, that expires after 5 minutes
-    await this.cacheManager.set(`${email}-otp`, otp, 600000); //300000 ms
+    await this.cacheManager.set(`${email}-otp`, otp, 600000); //600000 ms
     console.log({ otp });
     const emailSent = await this.MailerEmailService.sendEmail({
       email: email,
@@ -46,9 +47,7 @@ export class AuthService {
       html: verifyAccount(otp),
     });
     console.log({ emailSent });
-    console.log({
-      message: 'otp is sent to your email',
-    });
+
     return {
       message: 'otp is sent to your email',
     };
@@ -92,7 +91,34 @@ export class AuthService {
     return { message: 'user logged in successfully', token, refreshToken };
   }
 
-  async resetPassword() {
-    console.log('reset');
+  async forgotPassword(body: ForgotPasswordDto) {
+    const user = await this._UserService.getUserByEmail(body.email);
+    if (!user) throw new BadRequestException('user is not found');
+    if (!user.isActive) throw new BadRequestException('user is not verified');
+
+    return await this.sendOtp(body.email);
+  }
+
+  async resetPassword(body: ResetPasswordDto) {
+    const user = await this._UserService.getUserByEmail(body.email);
+    if (!user) throw new BadRequestException('user is not found');
+    if (!user.isActive) throw new BadRequestException('user is not verified');
+
+    // set otp in cache manager, that expires after 5 minutes
+    const getOtp = await this.cacheManager.get(`${user.email}-otp`);
+    if (!getOtp || getOtp !== body.otp) {
+      console.log({ otp: body.otp, getOtp });
+      throw new BadRequestException('invalid otp');
+    }
+
+    user.password = await hashText(body.password);
+    user.changeCredentials = new Date();
+
+    await this._UserService.saveUser(user);
+
+    return {
+      status: 'success',
+      message: 'password is updated successfully',
+    };
   }
 }

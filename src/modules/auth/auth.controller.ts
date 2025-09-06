@@ -5,6 +5,7 @@ import { VerifyAccountDto } from '../user/dtos/verify-account.dto';
 import { GenerateOtpDto } from '../user/dtos/generate-otp.dto';
 import { LoginDto } from './dtos/login.dto';
 import { Public } from './../../common/decorators/public.decorator';
+import { ForgotPasswordDto, ResetPasswordDto } from './dtos/resetPassword.dto';
 
 @Public()
 @Controller('auth')
@@ -30,5 +31,14 @@ export class AuthController {
     return this.authService.login(body);
   }
   //forgot password
+  @Post('/forgot_password')
+  forgotPassword(@Body() body: ForgotPasswordDto) {
+    return this.authService.forgotPassword(body);
+  }
+
   //reset password
+  @Post('/reset_password')
+  resetPassword(@Body() body: ResetPasswordDto) {
+    return this.authService.resetPassword(body);
+  }
 }
