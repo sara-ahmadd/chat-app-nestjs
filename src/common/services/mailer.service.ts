@@ -14,11 +14,12 @@ export class MailerEmailService {
     subject: string;
     html: string;
   }) {
-    this.Mailer_Service.sendMail({
+    const info = await this.Mailer_Service.sendMail({
       from: 'Chat App 📧',
       to: email,
       subject,
       html,
     });
+    console.log({ info });
   }
 }
